@@ -16,6 +16,9 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
+from typing import Dict, List, Optional
+
+import numpy as np
 
 
 class BimaruState:
@@ -35,22 +38,43 @@ class BimaruState:
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
+    def __init__(self):
+        parsed_instance = self.parse_instance()
+        self.board = parsed_instance["board"]
+        self.rows: List[int] = parsed_instance["rows"]
+        self.columns: List[int] = parsed_instance["columns"]
+
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
-        # TODO
-        pass
+        return self.board[(row, col)]
 
-    def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
+    def adjacent_vertical_values(self, row: int, col: int) -> (Optional[str], str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
-        # TODO
-        pass
+        if row == 0:
+            # TOP OF THE BOARD
+            res = (None, self.board[(row+1, col)])
+        elif row == 9:
+            # BOTTOM OF THE BOARD
+            res = (self.board[(row-1, col)], None)
+        else:
+            res = (self.board[(row-1, col)], self.board[(row+1, col)])
+
+        return res
 
     def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
-        # TODO
-        pass
+        if col == 0:
+            # LEFT OF THE BOARD
+            res = (None, self.board[(row, col+1)])
+        elif row == 9:
+            # RIGHT OF THE BOARD
+            res = (self.board[(row, col-1)], None)
+        else:
+            res = (self.board[(row, col-1)], self.board[(row, col+1)])
+
+        return res
 
     @staticmethod
     def parse_instance():
@@ -64,7 +88,6 @@ class Board:
             > line = stdin.readline().split()
         """
         # TODO
-        pass
 
     # TODO: outros metodos da classe
 

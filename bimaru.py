@@ -16,6 +16,9 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
+from typing import List , Optional, Dict
+import numpy.typing as npt
+import numpy as np
 
 
 class BimaruState:
@@ -34,12 +37,11 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
-
+    
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
         # TODO
         pass
-
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
@@ -60,11 +62,28 @@ class Board:
         Por exemplo:
             $ python3 bimaru.py < input_T01
 
-            > from sys import stdin
+            > from sys import stdin 
             > line = stdin.readline().split()
         """
-        # TODO
-        pass
+        res = {}
+        board:npt.ArrayLike[Optional[str]] = np.empty([10,10], dtype=str)
+        board[:]=""
+        for line in sys.stdin:
+            print(line)
+            split_line = line.split("\t")
+            if split_line[0] == "ROW":
+                print(split_line)
+                res["rows"]: List[int] = [int(e) for e in split_line[1:]]
+            elif split_line[0] == "COLUMN":
+                print(split_line)
+                res["columns"]:List[int] = [int(e) for e in split_line[1:]]
+            elif split_line[0] == "HINT":
+                print(split_line)
+                board[(int(split_line[1]), int(split_line[2]))]=split_line[-1]
+            print(res["rows"])
+        res["board"]=board
+        print(res)
+        return res
 
     # TODO: outros metodos da classe
 
@@ -105,9 +124,7 @@ class Bimaru(Problem):
 
 
 if __name__ == "__main__":
-    # TODO:
-    # Ler o ficheiro do standard input,
+    Board.parse_instance()
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
-    pass

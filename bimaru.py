@@ -44,11 +44,62 @@ class Board:
         self.board = parsed_instance["board"]
         self.rows: List[int] = parsed_instance["rows"]
         self.columns: List[int] = parsed_instance["columns"]
+        self.available_boats={1:4, 2:3, 3:2, 4:1}
+        self.decrease_hint_boats()
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
         return self.board[(row, col)]
     
+    def get_rows(self):
+        return self.rows
+
+    def get_columns(self):
+        return self.columns
+    
+    def set_rows(self, new_rows):
+        self.rows=new_rows
+    
+    def set_columns(self, new_columns):
+        self.columns=new_columns
+
+    def decrease_available_boats(self, boat_length):
+        """Tira da lista de barcos disponíveis
+        um barco de tamanho pretendido"""
+        self.available_boats[boat_length]-=1
+    
+    def decrease_hint_boats(self):
+        """Deteta os barcos que já foram colocados e
+        subtrai-os aos barcos disponíveis"""
+        tested_coords=[]
+        for (row,col), value in np.ndenumerate(self.board):
+            if (row,col) not in tested_coords:
+                tested_coords.append((row,col))
+                k=0
+                stop=False
+                if value=="C":
+                    self.decrease_available_boats(1)
+                elif value=="T":
+                    while k<3 and not stop:
+                        v_vals=self.adjacent_vertical_values(row+k,col)
+                        if v_vals[1]=="" or v_vals[1]=="W":
+                            stop=True
+                        elif v_vals[1]=="B":
+                            tested_coords.extend([(row+j,col) for j in range(1,k+2)])
+                            self.decrease_available_boats(k+2)
+                            stop=True
+                        k+=1
+                elif value=="L":
+                    while k<3 and not stop:
+                        h_vals=self.adjacent_horizontal_values(row,col+k)
+                        if h_vals[1]=="" or h_vals[1]=="W":
+                            stop=True
+                        elif h_vals[1]=="R":
+                            tested_coords.extend([(row,col+j) for j in range(1,k+2)])
+                            self.decrease_available_boats(k+2)
+                            stop=True
+                        k+=1
+                
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
@@ -92,38 +143,33 @@ class Board:
         board:npt.ArrayLike[Optional[str]] = np.empty([10,10], dtype=str)
         board[:]=""
         for line in sys.stdin:
-            print(line)
             split_line = line.split("\t")
             if split_line[0] == "ROW":
-                print(split_line)
                 res["rows"]: List[int] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "COLUMN":
-                print(split_line)
                 res["columns"]:List[int] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "HINT":
-                print(split_line)
                 board[(int(split_line[1]), int(split_line[2]))]=split_line[-1]
-            print(res["rows"])
         res["board"]=board
         print(res)
         return res
 
-    # TODO: outros metodos da classe
-
-
 class Bimaru(Problem):
+
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         # TODO
         pass
 
     def actions(self, state: BimaruState):
+        #Fazer as grids possíveis de somar
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         # TODO
         pass
 
     def result(self, state: BimaruState, action):
+        #Somar as grids das ações ao nosso board
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
@@ -132,6 +178,7 @@ class Bimaru(Problem):
         pass
 
     def goal_test(self, state: BimaruState):
+        #Verificar as regras do goal_test
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
@@ -139,6 +186,7 @@ class Bimaru(Problem):
         pass
 
     def h(self, node: Node):
+        #Dar uma heurística melhor aos barcos maiores e também aos barcos que cumpram as condições das hints
         """Função heuristica utilizada para a procura A*."""
         # TODO
         pass
@@ -147,7 +195,7 @@ class Bimaru(Problem):
 
 
 if __name__ == "__main__":
-    Board.parse_instance()
+    board=Board()
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.

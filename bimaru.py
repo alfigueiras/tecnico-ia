@@ -22,32 +22,28 @@ import numpy.typing as npt
 import numpy as np
 
 
-class BimaruState:
-    state_id = 0
-
-    def __init__(self, board):
-        self.board = board
-        self.id = BimaruState.state_id
-        BimaruState.state_id += 1
-
-    def __lt__(self, other):
-        return self.id < other.id
-
-    # TODO: outros metodos da classe
-
-
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
     def __init__(self):
         parsed_instance = self.parse_instance()
         self.board = parsed_instance["board"]
-        self.set_water()
-
         self.rows: List[int] = parsed_instance["rows"]
         self.columns: List[int] = parsed_instance["columns"]
         self.available_boats={1:4, 2:3, 3:2, 4:1}
+        self.empty_spots_row=np.zeros(10,dtype=int)
+        self.empty_spots_col=np.zeros(10,dtype=int)
         self.decrease_hint_boats()
+        self.find_empty_spots()
+
+    #Correr isto sempre depois do set_water?
+    def find_empty_spots(self):
+        for (row,col), value in np.ndenumerate(self.board):
+            if value=="":
+                self.empty_spots_row[row]+=1
+                self.empty_spots_col[col]+=1
+        print(self.empty_spots_col)
+        print(self.empty_spots_row)
 
     def set_water(self):
         for i, r in enumerate(self.rows):
@@ -92,19 +88,7 @@ class Board:
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
         return self.board[(row, col)]
- 
-    def get_rows(self):
-        return self.rows
-
-    def get_columns(self):
-        return self.columns
     
-    def set_rows(self, new_rows):
-        self.rows=new_rows
-    
-    def set_columns(self, new_columns):
-        self.columns=new_columns
-
     def decrease_available_boats(self, boat_length):
         """Tira da lista de barcos disponíveis
         um barco de tamanho pretendido"""
@@ -233,16 +217,29 @@ class Board:
         res["board"]=board
         return res
 
-class Bimaru(Problem):
+class BimaruState:
+    state_id = 0
 
     def __init__(self, board: Board):
-        """O construtor especifica o estado inicial."""
-        self.board = board
+        self.boardState = board
+        self.id = BimaruState.state_id
+        BimaruState.state_id += 1
 
+    def __lt__(self, other):
+        return self.id < other.id
+
+    # TODO: outros metodos da classe
+
+class Bimaru(Problem):
+
+    def __init__(self, boardS: Board):
+        """O construtor especifica o estado inicial."""
+        #possivelmente pode dar problemas porque ocupa muito espaço, se der reduzir o que se passa no estado inicial para apenas a board maybe
+        self.initial=BimaruState(boardS)
+
+    #Decidir se se mete as águas junto com os barcos ou só os barcos e depois as águas nas ações
     def actions(self, state: BimaruState):
         #Fazer as grids possíveis de somar
-        """Retorna uma lista de ações que podem ser executadas a
-        partir do estado passado como argumento."""
         # TODO
         pass
 
@@ -252,8 +249,16 @@ class Bimaru(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        # TODO
-        pass
+        new_board=state.boardState.board()+action["board"]
+        state.boardState.board=new_board
+        state.boardState.rows(action["rows"])
+        state.boardState.columns(action["columns"])
+        state.boardState.decrease_available_boats(action["boat_length"])
+        #Isto pode ser lento também, é possível que seja melhor definir as águas na ação e só somar ao invés de correr o set_water sempre
+        #Ou então correr set_water apenas para as coordenadas onde foi metido o barco, isso era capaz de ser bastante melhor ideia
+        state.boardState.set_water()
+        state.boardState.find_empty_spots()
+        return state
 
     def goal_test(self, state: BimaruState):
         #Verificar as regras do goal_test
@@ -273,7 +278,7 @@ class Bimaru(Problem):
 
 
 if __name__ == "__main__":
-    p = Bimaru(Board())
+    board=Board()
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.

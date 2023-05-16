@@ -17,7 +17,7 @@ from search import (
     recursive_best_first_search,
 )
 
-from typing import List , Optional, Dict
+from typing import Dict, List, Optional, Tuple
 import numpy.typing as npt
 import numpy as np
 
@@ -42,15 +42,57 @@ class Board:
     def __init__(self):
         parsed_instance = self.parse_instance()
         self.board = parsed_instance["board"]
+        self.set_water()
+
         self.rows: List[int] = parsed_instance["rows"]
         self.columns: List[int] = parsed_instance["columns"]
         self.available_boats={1:4, 2:3, 3:2, 4:1}
         self.decrease_hint_boats()
 
+    def set_water(self):
+        for i, r in enumerate(self.rows):
+            n_boats = sum([1 for e in self.board[i, :] if e != ""])
+            if n_boats == r:
+                self.board[i, :][self.board == ""] = "."
+
+        for j, c in enumerate(self.columns):
+            n_boats = sum([1 for e in self.board[:, j] if e != ""])
+            if n_boats == c:
+                self.board[:, j][self.board == ""] = "."
+
+        for m in range(len(self.rows)):
+            for n in range(len(self.columns)):
+                value = self.board[(m, n)]
+                if value not in ["", ".", "W"]:
+                    adj_values = self.get_adjacent_values(m, n)
+                    if value == "C":
+                        for v in adj_values.values():
+                            self.set_value(v[0][0], v[0][1], ".")
+                    if value == "T":
+                        for direction, v in adj_values:
+                            if direction != "b":
+                                self.set_value(v[0][0], v[0][1], ".")
+                    if value == "B":
+                        for direction, v in adj_values:
+                            if direction != "t":
+                                self.set_value(v[0][0], v[0][1], ".")
+                    if value == "L":
+                        for direction, v in adj_values:
+                            if direction != "r":
+                                self.set_value(v[0][0], v[0][1], ".")
+                    if value == "R":
+                        for direction, v in adj_values:
+                            if direction != "l":
+                                self.set_value(v[0][0], v[0][1], ".")
+                    if value == "M":
+                        for direction, v in adj_values:
+                            if len(direction) > 1:
+                                self.set_value(v[0][0], v[0][1], ".")
+
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
         return self.board[(row, col)]
-    
+ 
     def get_rows(self):
         return self.rows
 
@@ -99,18 +141,56 @@ class Board:
                             self.decrease_available_boats(k+2)
                             stop=True
                         k+=1
-                
+
+    def set_value(self, row: int, col: int, value: str):
+        self.board[(row, col)] = value
+
+    def get_adjacent_values(self, row: int, col: int) -> Dict[str, Tuple[Tuple[int, int], str]]:
+        adjacent_coords = {
+            't': (row - 1, col),
+            'b': (row + 1, col),
+            'l': (row, col - 1),
+            'r': (row, col + 1),
+            'tl': (row - 1, col - 1),
+            'tr': (row - 1, col + 1),
+            'bl': (row + 1, col - 1),
+            'br': (row + 1, col + 1),
+
+        }
+        res = {}
+        if row == 0:
+            for k, v in adjacent_coords:
+                if 't' not in k:
+                    res[k] = (v, self.board[v])
+        elif row == 9:
+            for k, v in adjacent_coords:
+                if 'b' not in k:
+                    res[k] = (v, self.board[v])
+        elif col == 0:
+            for k, v in adjacent_coords:
+                if 'l' not in k:
+                    res[k] = (v, self.board[v])
+        elif col == 9:
+            for k, v in adjacent_coords:
+                if 'r' not in k:
+                    res[k] = (v, self.board[v])
+        else:
+            for k, v in adjacent_coords:
+                res[k] = (v, self.board[v])
+
+        return res
+
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
         if row == 0:
             # TOP OF THE BOARD
-            res = (None, self.board[(row+1, col)])
+            res = (None, self.board[(row + 1, col)])
         elif row == 9:
             # BOTTOM OF THE BOARD
-            res = (self.board[(row-1, col)], None)
+            res = (self.board[(row - 1, col)], None)
         else:
-            res = (self.board[(row-1, col)], self.board[(row+1, col)])
+            res = (self.board[(row - 1, col)], self.board[(row + 1, col)])
 
         return res
 
@@ -119,12 +199,12 @@ class Board:
         respectivamente."""
         if col == 0:
             # LEFT OF THE BOARD
-            res = (None, self.board[(row, col+1)])
+            res = (None, self.board[(row, col + 1)])
         elif row == 9:
             # RIGHT OF THE BOARD
-            res = (self.board[(row, col-1)], None)
+            res = (self.board[(row, col - 1)], None)
         else:
-            res = (self.board[(row, col-1)], self.board[(row, col+1)])
+            res = (self.board[(row, col - 1)], self.board[(row, col + 1)])
 
         return res
 
@@ -140,8 +220,8 @@ class Board:
             > line = stdin.readline().split()
         """
         res = {}
-        board:npt.ArrayLike[Optional[str]] = np.empty([10,10], dtype=str)
-        board[:]=""
+        board: npt.ArrayLike[Optional[str]] = np.empty([10, 10], dtype=str)
+        board[:] = ""
         for line in sys.stdin:
             split_line = line.split("\t")
             if split_line[0] == "ROW":
@@ -151,15 +231,13 @@ class Board:
             elif split_line[0] == "HINT":
                 board[(int(split_line[1]), int(split_line[2]))]=split_line[-1]
         res["board"]=board
-        print(res)
         return res
 
 class Bimaru(Problem):
 
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
-        # TODO
-        pass
+        self.board = board
 
     def actions(self, state: BimaruState):
         #Fazer as grids possíveis de somar
@@ -195,7 +273,7 @@ class Bimaru(Problem):
 
 
 if __name__ == "__main__":
-    board=Board()
+    p = Bimaru(Board())
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.

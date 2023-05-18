@@ -25,23 +25,22 @@ import numpy as np
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
-    def __init__(self):
-        parsed_instance = self.parse_instance()
-        self.board = parsed_instance["board"]
-        self.rows: List[int] = parsed_instance["rows"]
-        self.columns: List[int] = parsed_instance["columns"]
-        self.available_boats={1:4, 2:3, 3:2, 4:1}
-        self.empty_spots_row=np.zeros(10,dtype=int)
-        self.empty_spots_col=np.zeros(10,dtype=int)
-        self.decrease_hint_boats()
-        self.find_empty_spots()
+    def __init__(self, board: npt.ArrayLike[Optional[str]], rows, columns, available_boats={1: 4, 2: 3, 3: 2, 4: 1}, empty_spots_row=np.zeros(10, dtype=int), empty_spots_col=np.zeros(10, dtype=int)):
+        self.board = board
+        self.rows: List[int] = rows
+        self.columns: List[int] = columns
+        self.available_boats = available_boats
 
-    #Correr isto sempre depois do set_water?
+        # Tirar?
+        self.empty_spots_row = empty_spots_row
+        self.empty_spots_col = empty_spots_col
+
+    # Correr isto sempre depois do set_water?
     def find_empty_spots(self):
-        for (row,col), value in np.ndenumerate(self.board):
-            if value=="":
-                self.empty_spots_row[row]+=1
-                self.empty_spots_col[col]+=1
+        for (row, col), value in np.ndenumerate(self.board):
+            if value == "":
+                self.empty_spots_row[row] += 1
+                self.empty_spots_col[col] += 1
         print(self.empty_spots_col)
         print(self.empty_spots_row)
 
@@ -88,43 +87,45 @@ class Board:
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
         return self.board[(row, col)]
-    
+
     def decrease_available_boats(self, boat_length):
         """Tira da lista de barcos disponíveis
         um barco de tamanho pretendido"""
-        self.available_boats[boat_length]-=1
-    
+        self.available_boats[boat_length] -= 1
+
     def decrease_hint_boats(self):
         """Deteta os barcos que já foram colocados e
         subtrai-os aos barcos disponíveis"""
-        tested_coords=[]
-        for (row,col), value in np.ndenumerate(self.board):
-            if (row,col) not in tested_coords:
-                tested_coords.append((row,col))
-                k=0
-                stop=False
-                if value=="C":
+        tested_coords = []
+        for (row, col), value in np.ndenumerate(self.board):
+            if (row, col) not in tested_coords:
+                tested_coords.append((row, col))
+                k = 0
+                stop = False
+                if value == "C":
                     self.decrease_available_boats(1)
-                elif value=="T":
-                    while k<3 and not stop:
-                        v_vals=self.adjacent_vertical_values(row+k,col)
-                        if v_vals[1]=="" or v_vals[1]=="W":
-                            stop=True
-                        elif v_vals[1]=="B":
-                            tested_coords.extend([(row+j,col) for j in range(1,k+2)])
+                elif value == "T":
+                    while k < 3 and not stop:
+                        v_vals = self.adjacent_vertical_values(row+k, col)
+                        if v_vals[1] == "" or v_vals[1] == "W":
+                            stop = True
+                        elif v_vals[1] == "B":
+                            tested_coords.extend(
+                                [(row+j, col) for j in range(1, k+2)])
                             self.decrease_available_boats(k+2)
-                            stop=True
-                        k+=1
-                elif value=="L":
-                    while k<3 and not stop:
-                        h_vals=self.adjacent_horizontal_values(row,col+k)
-                        if h_vals[1]=="" or h_vals[1]=="W":
-                            stop=True
-                        elif h_vals[1]=="R":
-                            tested_coords.extend([(row,col+j) for j in range(1,k+2)])
+                            stop = True
+                        k += 1
+                elif value == "L":
+                    while k < 3 and not stop:
+                        h_vals = self.adjacent_horizontal_values(row, col+k)
+                        if h_vals[1] == "" or h_vals[1] == "W":
+                            stop = True
+                        elif h_vals[1] == "R":
+                            tested_coords.extend(
+                                [(row, col+j) for j in range(1, k+2)])
                             self.decrease_available_boats(k+2)
-                            stop=True
-                        k+=1
+                            stop = True
+                        k += 1
 
     def set_value(self, row: int, col: int, value: str):
         self.board[(row, col)] = value
@@ -175,7 +176,6 @@ class Board:
             res = (self.board[(row - 1, col)], None)
         else:
             res = (self.board[(row - 1, col)], self.board[(row + 1, col)])
-
         return res
 
     def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
@@ -209,19 +209,23 @@ class Board:
         for line in sys.stdin:
             split_line = line.split("\t")
             if split_line[0] == "ROW":
+                # Mudar para np arrays?
                 res["rows"]: List[int] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "COLUMN":
-                res["columns"]:List[int] = [int(e) for e in split_line[1:]]
+                res["columns"]: List[int] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "HINT":
-                board[(int(split_line[1]), int(split_line[2]))]=split_line[-1]
-        res["board"]=board
+                board[(int(split_line[1]), int(split_line[2]))] = split_line[-1]
+        res["board"] = board
         return res
+
 
 class BimaruState:
     state_id = 0
+    # Guardar o objeto em cada state ou apenas guardar a grid?
 
     def __init__(self, board: Board):
         self.boardState = board
+        self.depht = 0
         self.id = BimaruState.state_id
         BimaruState.state_id += 1
 
@@ -230,38 +234,40 @@ class BimaruState:
 
     # TODO: outros metodos da classe
 
+
 class Bimaru(Problem):
 
     def __init__(self, boardS: Board):
         """O construtor especifica o estado inicial."""
-        #possivelmente pode dar problemas porque ocupa muito espaço, se der reduzir o que se passa no estado inicial para apenas a board maybe
-        self.initial=BimaruState(boardS)
+        # possivelmente pode dar problemas porque ocupa muito espaço, se der reduzir o que se passa no estado inicial para apenas a board maybe
+        self.initial = BimaruState(boardS)
 
-    #Decidir se se mete as águas junto com os barcos ou só os barcos e depois as águas nas ações
+    # Decidir se se mete as águas junto com os barcos ou só os barcos e depois as águas nas ações
     def actions(self, state: BimaruState):
-        #Fazer as grids possíveis de somar
+        # Gerar barcos dependendo da profundidade
+        # Começar por fazer pesquisa cega
         # TODO
         pass
 
     def result(self, state: BimaruState, action):
-        #Somar as grids das ações ao nosso board
+        # Somar as grids das ações ao nosso board
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        new_board=state.boardState.board()+action["board"]
-        state.boardState.board=new_board
-        state.boardState.rows(action["rows"])
-        state.boardState.columns(action["columns"])
-        state.boardState.decrease_available_boats(action["boat_length"])
-        #Isto pode ser lento também, é possível que seja melhor definir as águas na ação e só somar ao invés de correr o set_water sempre
-        #Ou então correr set_water apenas para as coordenadas onde foi metido o barco, isso era capaz de ser bastante melhor ideia
-        state.boardState.set_water()
-        state.boardState.find_empty_spots()
-        return state
+        new_board = state.boardState.board+action["board"]
+        state.boardState.board = new_board
+        new_state = BimaruState(Board(
+            new_board, action["rows"], action["columns"], state.boardState.available_boats))
+        new_state.boardState.decrease_available_boats(action["boat_length"])
+        # Isto pode ser lento também, é possível que seja melhor definir as águas na ação e só somar ao invés de correr o set_water sempre
+        # Ou então correr set_water apenas para as coordenadas onde foi metido o barco, isso era capaz de ser bastante melhor ideia
+        new_state.boardState.set_water()
+        new_state.boardState.find_empty_spots()
+        return new_state
 
     def goal_test(self, state: BimaruState):
-        #Verificar as regras do goal_test
+        # Verificar as regras do goal_test
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
@@ -269,7 +275,7 @@ class Bimaru(Problem):
         pass
 
     def h(self, node: Node):
-        #Dar uma heurística melhor aos barcos maiores e também aos barcos que cumpram as condições das hints
+        # Dar uma heurística melhor aos barcos maiores e também aos barcos que cumpram as condições das hints
         """Função heuristica utilizada para a procura A*."""
         # TODO
         pass
@@ -278,7 +284,16 @@ class Bimaru(Problem):
 
 
 if __name__ == "__main__":
-    board=Board()
+    parsed = Board.parse_instance()
+    board = Board(parsed["board"], parsed["rows"], parsed["columns"])
+    board.decrease_hint_boats()
+    board.set_water()
+    board.find_empty_spots()
+    result = depth_first_tree_search(Bimaru(board))
+
+    # result=depth_first_tree_search(prob)
+    # print(result)
+
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.

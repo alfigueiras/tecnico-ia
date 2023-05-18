@@ -45,6 +45,7 @@ class Board:
         # Tirar?
         self.empty_spots_row = empty_spots_row
         self.empty_spots_col = empty_spots_col
+        self.find_empty_spots()
 
     # Correr isto sempre depois do set_water?
     def find_empty_spots(self):
@@ -55,6 +56,57 @@ class Board:
         print(self.empty_spots_col)
         print(self.empty_spots_row)
 
+    def can_horizontal_boat(self,row,boat_length):
+        board_row=self.board[row, :]
+        j=0
+        boat_coords=[]
+        if boat_length==1:
+            for i, val in enumerate(board_row):
+                if val=="":
+                    coord=(row,i)
+                    if self.empty_spots_col[i]>=1:
+                        can_put=True
+                        for value in self.get_adjacent_values(row,i).values():
+                            if value not in ["W", ".", ""]:
+                                can_put=False
+                                break
+                        if can_put:
+                            boat_coords.append([coord])
+        if boat_length==2:
+            j=1
+            for i, val in enumerate(board_row):
+                if val=="L":
+                    j=1
+                elif val=="" or val=="R":
+                    j+=1
+                    if j>=2:
+                        char_b=["l","r"]
+                        coords=[(row,i-j+k,char_b[k-1]) for k in range(1,3) if char_b[k-1].upper()!=self.get_value(row,i-j+k)]
+                        for cor in coords:
+                            if self.empty_spots_col[cor[1]]>=1:
+                                can_put=True
+                                for (key,value) in self.get_adjacent_values(cor[0],cor[1]).items():
+                                    if value not in ["W", ".", ""]:
+                                        if key=="l" and value=="L" and cor[2]=="r":
+                                            pass
+                                        if key=="r" and value=="R" and cor[1]=="l":
+                                            pass
+                                        else:
+                                            can_put=False
+                                            break
+                                if can_put:
+                                    boat_coords.append(coords)
+                            else: break
+                    if val=="R":
+                        j=0
+                else:
+                    j=0
+        if boat_length==3:
+            if val=="L":
+                j=1
+            
+    def can_vertical_boat(self,col,boat_length):
+        pass
 
     def set_initial_water(self):
         """Sets water at the first instance of the board."""
@@ -207,6 +259,7 @@ class Board:
         res = {}
         if row == 0:
             for k, v in adjacent_coords.items():
+                #if t != k?
                 if 't' not in k:
                     res[k] = (v, self.board[v])
         elif row == 9:
@@ -303,14 +356,23 @@ class Bimaru(Problem):
 
     # Decidir se se mete as águas junto com os barcos ou só os barcos e depois as águas nas ações
     def actions(self, state: BimaruState):
-
+        #talvez gerar também todos os estados possíveis que se podem ligar às hints existentes em vez de tamanho fixo
         # Gerar barcos dependendo da profundidade
         # Começar por fazer pesquisa cega
         # Fazer as grids possíveis de somar
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
-        # TODO
-        pass
+        actions=[]
+        boat_length=0
+        for key in range(1,5):
+            if state.boardState.available_boats[key]!=0:
+                boat_length=key
+
+        for i in filter(lambda x: x>=boat_length, state.boardState.empty_spots_row):
+
+            pass
+        for j in filter(lambda x: x>=boat_length, state.boardState.empty_spots_row):
+            pass
 
     def result(self, state: BimaruState, action):
         # Somar as grids das ações ao nosso board
@@ -350,14 +412,14 @@ if __name__ == "__main__":
     parsed = Board.parse_instance()
     board = Board(parsed["board"], parsed["rows"], parsed["columns"])
     board.decrease_hint_boats()
-    board.set_water()
+    board.set_initial_water()
     board.find_empty_spots()
     result = depth_first_tree_search(Bimaru(board))
 
     # result=depth_first_tree_search(prob)
     # print(result)
-    p = Bimaru(Board())
-    p.board.set_boat(boat_coords=[(2, 9, 't'), (3, 9, 'b')])
+    p = Bimaru(board)
+    p.initial.boardState.set_boat(boat_coords=[(2, 9, 't'), (3, 9, 'b')])
 
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,

@@ -56,7 +56,7 @@ class Board:
         print(self.empty_spots_col)
         print(self.empty_spots_row)
 
-    def can_horizontal_boat(self,row,boat_length):
+    def horizontal_boats(self,row,boat_length):
         board_row=self.board[row, :]
         j=0
         boat_coords=[]
@@ -112,7 +112,7 @@ class Board:
                     j+=1
                     if j>=3:
                         char_b=["l","m","r"]
-                        coords=[(row,i+k-2,char_b[k]) for k in range(0,4) if char_b[k].upper()!=self.get_value(row,i+k-2)]
+                        coords=[(row,i+k-2,char_b[k]) for k in range(0,3) if char_b[k].upper()!=self.get_value(row,i+k-2)]
                         #Ter cuidado com isto
                         if self.get_value(i-2)=="M":
                             coords=[]
@@ -121,12 +121,15 @@ class Board:
                             if self.empty_spots_col[cor[1]]>=1:
                                 can_put=True
                                 for (key,value) in self.get_adjacent_values(cor[0],cor[1]).items():
+                                    #Isto tá mal
                                     if value not in ["W", ".", ""]:
-                                        if key=="l" and value=="L" and cor[2]=="r":
+                                        if key=="l" and value=="L" and cor[2]=="m":
                                             pass
-                                        elif key=="r" and value=="R" and cor[2]=="l":
+                                        elif key=="r" and value=="R" and cor[2]=="m":
                                             pass
-                                        elif cor[2]=="m" and ((key=="l" and value=="L") or (key=="r" and value=="R")):
+                                        elif key=="r" and value=="M" and cor[2]=="l":
+                                            pass
+                                        elif key=="l" and value=="M" and cor[2]=="r":
                                             pass
                                         else:
                                             can_put=False
@@ -138,8 +141,51 @@ class Board:
                         j=0
                 else:
                     j=0
+        #Possivelmente posso adaptar o de 3 mas it is what it is
         if boat_length==4:
-            pass
+            j=0
+            for i, val in enumerate(board_row):
+                if val=="L":
+                    j=1
+                elif val=="M":
+                    j+=1
+                elif val=="" or val=="R":
+                    j+=1
+                    if j>=4:
+                        char_b=["l","m","m","r"]
+                        coords=[(row,i+k-3,char_b[k]) for k in range(0,4) if char_b[k].upper()!=self.get_value(row,i+k-2)]
+                        #cuidado
+                        if self.get_value(i-3)=="M":
+                            coords=[]
+                            j=2
+                        for cor in coords:
+                            if self.empty_spots_col[cor[1]]>=1:
+                                can_put=True
+                                for (key,value) in self.get_adjacent_values(cor[0],cor[1]).items():
+                                    if value not in ["W", ".", ""]:
+                                        if key=="l" and value=="L" and cor[2]=="m":
+                                            pass
+                                        elif key=="r" and value=="R" and cor[2]=="m":
+                                            pass
+                                        elif key=="r" and value=="M" and cor[2]=="l":
+                                            pass
+                                        elif key=="l" and value=="M" and cor[2]=="r":                                        
+                                            pass
+                                        elif key=="l" and value=="M" and cor[2]=="m":
+                                            pass
+                                        elif key=="r" and value=="M" and cor[2]=="m":
+                                            pass
+                                        else:
+                                            can_put=False
+                                            break
+                                if can_put:
+                                    boat_coords.append(coords)
+                            else: break
+                    if val=="R":
+                        j=0                        
+                else:
+                    j=0
+        return boat_coords
                 
             
     def can_vertical_boat(self,col,boat_length):

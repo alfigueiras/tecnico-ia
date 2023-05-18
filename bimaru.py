@@ -5,7 +5,7 @@
 # Grupo 00:
 # 00000 Nome1
 # 00000 Nome2
-
+import logging
 import sys
 from search import (
     Problem,
@@ -16,10 +16,19 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
-
+import os
 from typing import Dict, List, Optional, Tuple
 import numpy.typing as npt
 import numpy as np
+
+logging.basicConfig(
+    # CHANGE LEVEL TO SEE OTHER LOGS
+    level="DEBUG",
+    format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d]: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
+)
+logger = logging.getLogger(__name__)
 
 
 class Board:
@@ -30,6 +39,8 @@ class Board:
         self.rows: List[int] = rows
         self.columns: List[int] = columns
         self.available_boats = available_boats
+        self.set_initial_water()
+        self.decrease_hint_boats()
 
         # Tirar?
         self.empty_spots_row = empty_spots_row
@@ -44,45 +55,96 @@ class Board:
         print(self.empty_spots_col)
         print(self.empty_spots_row)
 
-    def set_water(self):
+
+    def set_initial_water(self):
+        """Sets water at the first instance of the board."""
+        # FILL ALL ROWS THAT ARE KNOWN WITH WATER
         for i, r in enumerate(self.rows):
-            n_boats = sum([1 for e in self.board[i, :] if e != ""])
+            n_boats = sum([1 for e in self.board[i, :] if e != "" and e != "." and e != 'W'])
             if n_boats == r:
-                self.board[i, :][self.board == ""] = "."
+                for n in range(len(self.columns)):
+                    if self.get_value(row=i, col=n) == "":
+                        self.set_value(row=i, col=n, value=".")
 
+        # FILL ALL COLUMNS THAT ARE KNOWN WITH WATER
         for j, c in enumerate(self.columns):
-            n_boats = sum([1 for e in self.board[:, j] if e != ""])
+            n_boats = sum([1 for e in self.board[:, j] if e != "" and e != "." and e != 'W'])
             if n_boats == c:
-                self.board[:, j][self.board == ""] = "."
+                for m in range(len(self.rows)):
+                    if self.get_value(row=m, col=j) == "":
+                        self.set_value(row=m, col=j, value=".")
 
-        for m in range(len(self.rows)):
-            for n in range(len(self.columns)):
-                value = self.board[(m, n)]
-                if value not in ["", ".", "W"]:
-                    adj_values = self.get_adjacent_values(m, n)
-                    if value == "C":
-                        for v in adj_values.values():
+        for (m, n), value in np.ndenumerate(self.board):
+            if value not in ["", ".", "W"]:
+                adj_values = self.get_adjacent_values(m, n)
+                if value == "C":
+                    for v in adj_values.values():
+                        self.set_value(v[0][0], v[0][1], ".")
+                if value == "T":
+                    for direction, v in adj_values.items():
+                        if direction != "b":
                             self.set_value(v[0][0], v[0][1], ".")
-                    if value == "T":
-                        for direction, v in adj_values:
-                            if direction != "b":
-                                self.set_value(v[0][0], v[0][1], ".")
-                    if value == "B":
-                        for direction, v in adj_values:
-                            if direction != "t":
-                                self.set_value(v[0][0], v[0][1], ".")
-                    if value == "L":
-                        for direction, v in adj_values:
-                            if direction != "r":
-                                self.set_value(v[0][0], v[0][1], ".")
-                    if value == "R":
-                        for direction, v in adj_values:
-                            if direction != "l":
-                                self.set_value(v[0][0], v[0][1], ".")
-                    if value == "M":
-                        for direction, v in adj_values:
-                            if len(direction) > 1:
-                                self.set_value(v[0][0], v[0][1], ".")
+                if value == "B":
+                    for direction, v in adj_values.items():
+                        if direction != "t":
+                            self.set_value(v[0][0], v[0][1], ".")
+                if value == "L":
+                    for direction, v in adj_values.items():
+                        if direction != "r":
+                            self.set_value(v[0][0], v[0][1], ".")
+                if value == "R":
+                    for direction, v in adj_values.items():
+                        if direction != "l":
+                            self.set_value(v[0][0], v[0][1], ".")
+                if value == "M":
+                    for direction, v in adj_values.items():
+                        if len(direction) > 1:
+                            self.set_value(v[0][0], v[0][1], ".")
+
+        logger.info(self.board)
+        logger.info(f"ROWS: {self.rows}")
+        logger.info(f"COLUMNS: {self.columns}")
+
+    def set_boat(self, boat_coords: List[Tuple[int, int, str]]):
+        """Set water around placed boat."""
+        # SETTING BOAT
+        for boat_piece in boat_coords:
+            self.set_value(row=boat_piece[0], col=boat_piece[1], value=boat_piece[2])
+
+        # RESOLVING WATER
+        boat_coords = [(e[0], e[1]) for e in boat_coords]
+        boat_adj = []
+        for coord in boat_coords:
+            adj_coords = self.get_adjacent_values(coord[0], coord[1])
+            adj_coords = [v[0] for v in adj_coords.values()]
+            boat_adj.extend(adj_coords)
+
+        boat_adj = set(boat_adj) - set(boat_coords)
+        for coord in boat_adj:
+            self.set_value(row=coord[0], col=coord[1], value=".")
+
+        # THE PART BELOW SHOULD BE A SEPARATE FUNCTION
+        # IT IS REPEATED
+        row_indexes = [e[0] for e in boat_coords]
+        col_indexes = [e[1] for e in boat_coords]
+        for r_i in row_indexes:
+            n_boats = sum([1 for e in self.board[r_i, :] if e != "" and e != "." and e != 'W'])
+            logger.debug(n_boats)
+            if n_boats == self.rows[r_i]:
+                for n in range(len(self.columns)):
+                    if self.get_value(row=r_i, col=n) == "":
+                        self.set_value(row=r_i, col=n, value=".")
+
+        for c_i in col_indexes:
+            n_boats = sum([1 for e in self.board[:, c_i] if e != "" and e != "." and e != 'W'])
+            if n_boats == self.columns[c_i]:
+                for m in range(len(self.rows)):
+                    if self.get_value(row=m, col=c_i) == "":
+                        self.set_value(row=m, col=c_i, value=".")
+
+        logger.info(self.board)
+        logger.info(f"ROWS: {self.rows}")
+        logger.info(f"COLUMNS: {self.columns}")
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
@@ -106,24 +168,23 @@ class Board:
                     self.decrease_available_boats(1)
                 elif value == "T":
                     while k < 3 and not stop:
-                        v_vals = self.adjacent_vertical_values(row+k, col)
+                        v_vals = self.adjacent_vertical_values(row + k, col)
                         if v_vals[1] == "" or v_vals[1] == "W":
                             stop = True
                         elif v_vals[1] == "B":
-                            tested_coords.extend(
-                                [(row+j, col) for j in range(1, k+2)])
-                            self.decrease_available_boats(k+2)
+                            tested_coords.extend([(row + j, col) for j in range(1, k + 2)])
+                            self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
                 elif value == "L":
                     while k < 3 and not stop:
-                        h_vals = self.adjacent_horizontal_values(row, col+k)
+
+                        h_vals = self.adjacent_horizontal_values(row, col + k)
                         if h_vals[1] == "" or h_vals[1] == "W":
                             stop = True
                         elif h_vals[1] == "R":
-                            tested_coords.extend(
-                                [(row, col+j) for j in range(1, k+2)])
-                            self.decrease_available_boats(k+2)
+                            tested_coords.extend([(row, col + j) for j in range(1, k + 2)])
+                            self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
 
@@ -131,6 +192,7 @@ class Board:
         self.board[(row, col)] = value
 
     def get_adjacent_values(self, row: int, col: int) -> Dict[str, Tuple[Tuple[int, int], str]]:
+        """Returns dictionary with all the adjacent coordinates plus their values."""
         adjacent_coords = {
             't': (row - 1, col),
             'b': (row + 1, col),
@@ -144,23 +206,23 @@ class Board:
         }
         res = {}
         if row == 0:
-            for k, v in adjacent_coords:
+            for k, v in adjacent_coords.items():
                 if 't' not in k:
                     res[k] = (v, self.board[v])
         elif row == 9:
-            for k, v in adjacent_coords:
+            for k, v in adjacent_coords.items():
                 if 'b' not in k:
                     res[k] = (v, self.board[v])
         elif col == 0:
-            for k, v in adjacent_coords:
+            for k, v in adjacent_coords.items():
                 if 'l' not in k:
                     res[k] = (v, self.board[v])
         elif col == 9:
-            for k, v in adjacent_coords:
+            for k, v in adjacent_coords.items():
                 if 'r' not in k:
                     res[k] = (v, self.board[v])
         else:
-            for k, v in adjacent_coords:
+            for k, v in adjacent_coords.items():
                 res[k] = (v, self.board[v])
 
         return res
@@ -218,10 +280,7 @@ class Board:
         res["board"] = board
         return res
 
-
 class BimaruState:
-    state_id = 0
-    # Guardar o objeto em cada state ou apenas guardar a grid?
 
     def __init__(self, board: Board):
         self.boardState = board
@@ -244,8 +303,12 @@ class Bimaru(Problem):
 
     # Decidir se se mete as águas junto com os barcos ou só os barcos e depois as águas nas ações
     def actions(self, state: BimaruState):
+
         # Gerar barcos dependendo da profundidade
         # Começar por fazer pesquisa cega
+        # Fazer as grids possíveis de somar
+        """Retorna uma lista de ações que podem ser executadas a
+        partir do estado passado como argumento."""
         # TODO
         pass
 
@@ -293,6 +356,8 @@ if __name__ == "__main__":
 
     # result=depth_first_tree_search(prob)
     # print(result)
+    p = Bimaru(Board())
+    p.board.set_boat(boat_coords=[(2, 9, 't'), (3, 9, 'b')])
 
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,

@@ -40,8 +40,6 @@ class Board:
         rows,
         columns,
         available_boats=None,
-        empty_spots_row=np.zeros(10, dtype=int),
-        empty_spots_col=np.zeros(10, dtype=int),
     ):
         # ARGUMENTO DEFAULT COMO DICIONÁRIO ESTAVA A DAR UM WARNING
         if available_boats is None:
@@ -51,12 +49,10 @@ class Board:
         self.rows: List[int] = rows
         self.columns: List[int] = columns
         self.available_boats = available_boats
-        self.set_initial_water()
         self.decrease_hint_boats()
 
-        # Tirar?
-        self.empty_spots_row = empty_spots_row
-        self.empty_spots_col = empty_spots_col
+        self.empty_spots_row = np.zeros(10, dtype=int)
+        self.empty_spots_col = np.zeros(10, dtype=int)
         self.find_empty_spots()
 
     # Correr isto sempre depois do set_water?
@@ -65,8 +61,6 @@ class Board:
             if value == "":
                 self.empty_spots_row[row] += 1
                 self.empty_spots_col[col] += 1
-        print(self.empty_spots_col)
-        print(self.empty_spots_row)
 
     def horizontal_boats(self, row, boat_length):
         board_row = self.board[row, :]
@@ -735,38 +729,42 @@ class Bimaru(Problem):
         # Começar por fazer pesquisa cega
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
+        print("i")
         actions = []
         boat_length = 0
         for key in range(1, 5):
             if state.boardState.available_boats[key] != 0:
                 boat_length = key
 
-        for i in filter(lambda x: x >= boat_length, state.boardState.empty_spots_row):
-            pass
-        for j in filter(lambda x: x >= boat_length, state.boardState.empty_spots_row):
-            pass
+        for i in range(len(state.boardState.empty_spots_row)):
+            if state.boardState.empty_spots_row[i]>=boat_length:
+                boats=state.boardState.horizontal_boats(i,boat_length)
+                for boat in boats:
+                    actions+={"coords": boat, "boat_length": boat_length}
+
+        for j in range(len(state.boardState.empty_spots_col)):
+            if state.boardState.empty_spots_col[j]>=boat_length:
+                boats=state.boardState.vertical_boats(i,boat_length)
+                for boat in boats:
+                    actions+={"coords": boat, "boat_length": boat_length}
+        return actions
 
     def result(self, state: BimaruState, action):
-        # Somar as grids das ações ao nosso board
         """Retorna o estado resultante de executar a 'action' sobre
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        new_board = state.boardState.board + action["board"]
-        state.boardState.board = new_board
         new_state = BimaruState(
             Board(
-                new_board,
-                action["rows"],
-                action["columns"],
+                state.boardState.board,
+                state.boardState.rows,
+                state.boardState.columns,
                 state.boardState.available_boats,
             )
         )
+        print(action)
         new_state.boardState.decrease_available_boats(action["boat_length"])
-        # Isto pode ser lento também, é possível que seja melhor definir as águas na ação e só somar ao invés de correr o set_water sempre
-        # Ou então correr set_water apenas para as coordenadas onde foi metido o barco, isso era capaz de ser bastante melhor ideia
-        # A FUNÇÃO SET_WATER() RECEBE AS COORDENADAS DO BARCO COM AS PEÇAS
-        new_state.boardState.set_water()
+        new_state.boardState.set_boat(action["coords"])
         new_state.boardState.find_empty_spots()
         return new_state
 
@@ -801,7 +799,6 @@ class Bimaru(Problem):
             if curr_board[r, c] == "":
                 solved = False
                 return solved
-
         return solved
 
 
@@ -820,15 +817,8 @@ if __name__ == "__main__":
     initial_board.decrease_hint_boats()
     initial_board.set_initial_water()
     initial_board.find_empty_spots()
-    #result = depth_first_tree_search(Bimaru(initial_board))
-
-    # result=depth_first_tree_search(prob)
-    # print(result)
-    p = Bimaru(initial_board)
-    p.initial.boardState.set_boat(boat_coords=[(2, 9, "t"), (3, 9, "b")])
-    print(p.initial.boardState.vertical_boats(8,3))
-
-
+    result = depth_first_tree_search(Bimaru(initial_board))
+    logger.info(result)
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.

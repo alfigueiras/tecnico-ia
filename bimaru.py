@@ -729,7 +729,6 @@ class Bimaru(Problem):
         # Começar por fazer pesquisa cega
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
-        print("i")
         actions = []
         boat_length = 0
         for key in range(1, 5):
@@ -740,13 +739,13 @@ class Bimaru(Problem):
             if state.boardState.empty_spots_row[i]>=boat_length:
                 boats=state.boardState.horizontal_boats(i,boat_length)
                 for boat in boats:
-                    actions+={"coords": boat, "boat_length": boat_length}
+                    actions.append({"coords": boat, "boat_length": boat_length})
 
         for j in range(len(state.boardState.empty_spots_col)):
             if state.boardState.empty_spots_col[j]>=boat_length:
                 boats=state.boardState.vertical_boats(i,boat_length)
                 for boat in boats:
-                    actions+={"coords": boat, "boat_length": boat_length}
+                    actions.append({"coords": boat, "boat_length": boat_length})
         return actions
 
     def result(self, state: BimaruState, action):
@@ -762,7 +761,7 @@ class Bimaru(Problem):
                 state.boardState.available_boats,
             )
         )
-        print(action)
+
         new_state.boardState.decrease_available_boats(action["boat_length"])
         new_state.boardState.set_boat(action["coords"])
         new_state.boardState.find_empty_spots()
@@ -817,7 +816,8 @@ if __name__ == "__main__":
     initial_board.decrease_hint_boats()
     initial_board.set_initial_water()
     initial_board.find_empty_spots()
-    result = depth_first_tree_search(Bimaru(initial_board))
+    problem=Bimaru(initial_board)
+    result = depth_first_tree_search(problem)
     logger.info(result)
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,

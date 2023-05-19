@@ -22,7 +22,7 @@ import numpy.typing as npt
 import numpy as np
 
 logging.basicConfig(
-    # CHANGE LEVEL TO SEE OTHER LOGS
+    # CHANGE LEVEL TO SEE ONLY INFO LOGS
     level="DEBUG",
     format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d]: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
@@ -34,7 +34,19 @@ logger = logging.getLogger(__name__)
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
-    def __init__(self, board: npt.ArrayLike[Optional[str]], rows, columns, available_boats={1: 4, 2: 3, 3: 2, 4: 1}, empty_spots_row=np.zeros(10, dtype=int), empty_spots_col=np.zeros(10, dtype=int)):
+    def __init__(
+        self,
+        board: npt.ArrayLike[Optional[str]],
+        rows,
+        columns,
+        available_boats=None,
+        empty_spots_row=np.zeros(10, dtype=int),
+        empty_spots_col=np.zeros(10, dtype=int),
+    ):
+        # ARGUMENTO DEFAULT COMO DICIONÁRIO ESTAVA A DAR UM WARNING
+        if available_boats is None:
+            available_boats = {1: 4, 2: 3, 3: 2, 4: 1}
+
         self.board = board
         self.rows: List[int] = rows
         self.columns: List[int] = columns
@@ -56,146 +68,216 @@ class Board:
         print(self.empty_spots_col)
         print(self.empty_spots_row)
 
-    def horizontal_boats(self,row,boat_length):
-        board_row=self.board[row, :]
-        j=0
-        boat_coords=[]
-        if boat_length==1:
+    def horizontal_boats(self, row, boat_length):
+        board_row = self.board[row, :]
+        j = 0
+        boat_coords = []
+        if boat_length == 1:
             for i, val in enumerate(board_row):
-                if val=="":
-                    coord=(row,i)
-                    if self.empty_spots_col[i]>=1:
-                        can_put=True
-                        for value in self.get_adjacent_values(row,i).values():
+                if val == "":
+                    coord = (row, i)
+                    if self.empty_spots_col[i] >= 1:
+                        can_put = True
+                        for value in self.get_adjacent_values(row, i).values():
                             if value not in ["W", ".", ""]:
-                                can_put=False
+                                can_put = False
                                 break
                         if can_put:
                             boat_coords.append([coord])
-        if boat_length==2:
-            j=0
+        if boat_length == 2:
+            j = 0
             for i, val in enumerate(board_row):
-                if val=="L":
-                    j=1
-                elif val=="" or val=="R":
-                    j+=1
-                    if j>=2:
-                        char_b=["l","r"]
-                        coords=[(row,i+k-1,char_b[k]) for k in range(0,2) if char_b[k].upper()!=self.get_value(row,i-k-1)]
+                if val == "L":
+                    j = 1
+                elif val == "" or val == "R":
+                    j += 1
+                    if j >= 2:
+                        char_b = ["l", "r"]
+                        coords = [
+                            (row, i + k - 1, char_b[k])
+                            for k in range(0, 2)
+                            if char_b[k].upper() != self.get_value(row, i - k - 1)
+                        ]
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]]>=1:
-                                can_put=True
-                                for (key,value) in self.get_adjacent_values(cor[0],cor[1]).items():
+                            if self.empty_spots_col[cor[1]] >= 1:
+                                can_put = True
+                                for key, value in self.get_adjacent_values(
+                                    cor[0], cor[1]
+                                ).items():
                                     if value not in ["W", ".", ""]:
-                                        if key=="l" and value=="L" and cor[2]=="r":
+                                        if (
+                                            key == "l"
+                                            and value == "L"
+                                            and cor[2] == "r"
+                                        ):
                                             pass
-                                        if key=="r" and value=="R" and cor[2]=="l":
+                                        if (
+                                            key == "r"
+                                            and value == "R"
+                                            and cor[2] == "l"
+                                        ):
                                             pass
                                         else:
-                                            can_put=False
+                                            can_put = False
                                             break
                                 if can_put:
                                     boat_coords.append(coords)
-                            else: break
-                    if val=="R":
-                        j=0
+                            else:
+                                break
+                    if val == "R":
+                        j = 0
                 else:
-                    j=0
-        if boat_length==3:
-            j=0
+                    j = 0
+        if boat_length == 3:
+            j = 0
             for i, val in enumerate(board_row):
-                if val=="L":
-                    j=1
-                elif val=="M":
-                    j+=1
-                elif val=="" or val=="R":
-                    j+=1
-                    if j>=3:
-                        char_b=["l","m","r"]
-                        coords=[(row,i+k-2,char_b[k]) for k in range(0,3) if char_b[k].upper()!=self.get_value(row,i+k-2)]
-                        #Ter cuidado com isto
-                        if self.get_value(i-2)=="M":
-                            coords=[]
-                            j=1
+                if val == "L":
+                    j = 1
+                elif val == "M":
+                    j += 1
+                elif val == "" or val == "R":
+                    j += 1
+                    if j >= 3:
+                        char_b = ["l", "m", "r"]
+                        coords = [
+                            (row, i + k - 2, char_b[k])
+                            for k in range(0, 3)
+                            if char_b[k].upper() != self.get_value(row, i + k - 2)
+                        ]
+                        # Ter cuidado com isto
+                        if self.get_value(i - 2) == "M":
+                            coords = []
+                            j = 1
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]]>=1:
-                                can_put=True
-                                for (key,value) in self.get_adjacent_values(cor[0],cor[1]).items():
-                                    #Isto tá mal
+                            if self.empty_spots_col[cor[1]] >= 1:
+                                can_put = True
+                                for key, value in self.get_adjacent_values(
+                                    cor[0], cor[1]
+                                ).items():
+                                    # Isto tá mal
                                     if value not in ["W", ".", ""]:
-                                        if key=="l" and value=="L" and cor[2]=="m":
+                                        if (
+                                            key == "l"
+                                            and value == "L"
+                                            and cor[2] == "m"
+                                        ):
                                             pass
-                                        elif key=="r" and value=="R" and cor[2]=="m":
+                                        elif (
+                                            key == "r"
+                                            and value == "R"
+                                            and cor[2] == "m"
+                                        ):
                                             pass
-                                        elif key=="r" and value=="M" and cor[2]=="l":
+                                        elif (
+                                            key == "r"
+                                            and value == "M"
+                                            and cor[2] == "l"
+                                        ):
                                             pass
-                                        elif key=="l" and value=="M" and cor[2]=="r":
+                                        elif (
+                                            key == "l"
+                                            and value == "M"
+                                            and cor[2] == "r"
+                                        ):
                                             pass
                                         else:
-                                            can_put=False
+                                            can_put = False
                                             break
                                 if can_put:
                                     boat_coords.append(coords)
-                            else: break
-                    if val=="R":
-                        j=0
+                            else:
+                                break
+                    if val == "R":
+                        j = 0
                 else:
-                    j=0
-        #Possivelmente posso adaptar o de 3 mas it is what it is
-        if boat_length==4:
-            j=0
+                    j = 0
+        # Possivelmente posso adaptar o de 3 mas it is what it is
+        if boat_length == 4:
+            j = 0
             for i, val in enumerate(board_row):
-                if val=="L":
-                    j=1
-                elif val=="M":
-                    j+=1
-                elif val=="" or val=="R":
-                    j+=1
-                    if j>=4:
-                        char_b=["l","m","m","r"]
-                        coords=[(row,i+k-3,char_b[k]) for k in range(0,4) if char_b[k].upper()!=self.get_value(row,i+k-2)]
-                        #cuidado
-                        if self.get_value(i-3)=="M":
-                            coords=[]
-                            j=2
+                if val == "L":
+                    j = 1
+                elif val == "M":
+                    j += 1
+                elif val == "" or val == "R":
+                    j += 1
+                    if j >= 4:
+                        char_b = ["l", "m", "m", "r"]
+                        coords = [
+                            (row, i + k - 3, char_b[k])
+                            for k in range(0, 4)
+                            if char_b[k].upper() != self.get_value(row, i + k - 2)
+                        ]
+                        # cuidado
+                        if self.get_value(i - 3) == "M":
+                            coords = []
+                            j = 2
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]]>=1:
-                                can_put=True
-                                for (key,value) in self.get_adjacent_values(cor[0],cor[1]).items():
+                            if self.empty_spots_col[cor[1]] >= 1:
+                                can_put = True
+                                for key, value in self.get_adjacent_values(
+                                    cor[0], cor[1]
+                                ).items():
                                     if value not in ["W", ".", ""]:
-                                        if key=="l" and value=="L" and cor[2]=="m":
+                                        if (
+                                            key == "l"
+                                            and value == "L"
+                                            and cor[2] == "m"
+                                        ):
                                             pass
-                                        elif key=="r" and value=="R" and cor[2]=="m":
+                                        elif (
+                                            key == "r"
+                                            and value == "R"
+                                            and cor[2] == "m"
+                                        ):
                                             pass
-                                        elif key=="r" and value=="M" and cor[2]=="l":
+                                        elif (
+                                            key == "r"
+                                            and value == "M"
+                                            and cor[2] == "l"
+                                        ):
                                             pass
-                                        elif key=="l" and value=="M" and cor[2]=="r":                                        
+                                        elif (
+                                            key == "l"
+                                            and value == "M"
+                                            and cor[2] == "r"
+                                        ):
                                             pass
-                                        elif key=="l" and value=="M" and cor[2]=="m":
+                                        elif (
+                                            key == "l"
+                                            and value == "M"
+                                            and cor[2] == "m"
+                                        ):
                                             pass
-                                        elif key=="r" and value=="M" and cor[2]=="m":
+                                        elif (
+                                            key == "r"
+                                            and value == "M"
+                                            and cor[2] == "m"
+                                        ):
                                             pass
                                         else:
-                                            can_put=False
+                                            can_put = False
                                             break
                                 if can_put:
                                     boat_coords.append(coords)
-                            else: break
-                    if val=="R":
-                        j=0                        
+                            else:
+                                break
+                    if val == "R":
+                        j = 0
                 else:
-                    j=0
+                    j = 0
         return boat_coords
-                
-            
-    def can_vertical_boat(self,col,boat_length):
+
+    def can_vertical_boat(self, col, boat_length):
         pass
 
     def set_initial_water(self):
         """Sets water at the first instance of the board."""
         # FILL ALL ROWS THAT ARE KNOWN WITH WATER
         for i, r in enumerate(self.rows):
-            n_boats = sum([1 for e in self.board[i, :] if e != "" and e != "." and e != 'W'])
+            n_boats = sum(
+                [1 for e in self.board[i, :] if e != "" and e != "." and e != "W"]
+            )
             if n_boats == r:
                 for n in range(len(self.columns)):
                     if self.get_value(row=i, col=n) == "":
@@ -203,7 +285,9 @@ class Board:
 
         # FILL ALL COLUMNS THAT ARE KNOWN WITH WATER
         for j, c in enumerate(self.columns):
-            n_boats = sum([1 for e in self.board[:, j] if e != "" and e != "." and e != 'W'])
+            n_boats = sum(
+                [1 for e in self.board[:, j] if e != "" and e != "." and e != "W"]
+            )
             if n_boats == c:
                 for m in range(len(self.rows)):
                     if self.get_value(row=m, col=j) == "":
@@ -263,7 +347,9 @@ class Board:
         row_indexes = [e[0] for e in boat_coords]
         col_indexes = [e[1] for e in boat_coords]
         for r_i in row_indexes:
-            n_boats = sum([1 for e in self.board[r_i, :] if e != "" and e != "." and e != 'W'])
+            n_boats = sum(
+                [1 for e in self.board[r_i, :] if e != "" and e != "." and e != "W"]
+            )
             logger.debug(n_boats)
             if n_boats == self.rows[r_i]:
                 for n in range(len(self.columns)):
@@ -271,7 +357,9 @@ class Board:
                         self.set_value(row=r_i, col=n, value=".")
 
         for c_i in col_indexes:
-            n_boats = sum([1 for e in self.board[:, c_i] if e != "" and e != "." and e != 'W'])
+            n_boats = sum(
+                [1 for e in self.board[:, c_i] if e != "" and e != "." and e != "W"]
+            )
             if n_boats == self.columns[c_i]:
                 for m in range(len(self.rows)):
                     if self.get_value(row=m, col=c_i) == "":
@@ -307,18 +395,21 @@ class Board:
                         if v_vals[1] == "" or v_vals[1] == "W":
                             stop = True
                         elif v_vals[1] == "B":
-                            tested_coords.extend([(row + j, col) for j in range(1, k + 2)])
+                            tested_coords.extend(
+                                [(row + j, col) for j in range(1, k + 2)]
+                            )
                             self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
                 elif value == "L":
                     while k < 3 and not stop:
-
                         h_vals = self.adjacent_horizontal_values(row, col + k)
                         if h_vals[1] == "" or h_vals[1] == "W":
                             stop = True
                         elif h_vals[1] == "R":
-                            tested_coords.extend([(row, col + j) for j in range(1, k + 2)])
+                            tested_coords.extend(
+                                [(row, col + j) for j in range(1, k + 2)]
+                            )
                             self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
@@ -326,36 +417,37 @@ class Board:
     def set_value(self, row: int, col: int, value: str):
         self.board[(row, col)] = value
 
-    def get_adjacent_values(self, row: int, col: int) -> Dict[str, Tuple[Tuple[int, int], str]]:
+    def get_adjacent_values(
+        self, row: int, col: int
+    ) -> Dict[str, Tuple[Tuple[int, int], str]]:
         """Returns dictionary with all the adjacent coordinates plus their values."""
         adjacent_coords = {
-            't': (row - 1, col),
-            'b': (row + 1, col),
-            'l': (row, col - 1),
-            'r': (row, col + 1),
-            'tl': (row - 1, col - 1),
-            'tr': (row - 1, col + 1),
-            'bl': (row + 1, col - 1),
-            'br': (row + 1, col + 1),
-
+            "t": (row - 1, col),
+            "b": (row + 1, col),
+            "l": (row, col - 1),
+            "r": (row, col + 1),
+            "tl": (row - 1, col - 1),
+            "tr": (row - 1, col + 1),
+            "bl": (row + 1, col - 1),
+            "br": (row + 1, col + 1),
         }
         res = {}
         if row == 0:
             for k, v in adjacent_coords.items():
-                #if t != k?
-                if 't' not in k:
+                # if t != k?
+                if "t" not in k:
                     res[k] = (v, self.board[v])
         elif row == 9:
             for k, v in adjacent_coords.items():
-                if 'b' not in k:
+                if "b" not in k:
                     res[k] = (v, self.board[v])
         elif col == 0:
             for k, v in adjacent_coords.items():
-                if 'l' not in k:
+                if "l" not in k:
                     res[k] = (v, self.board[v])
         elif col == 9:
             for k, v in adjacent_coords.items():
-                if 'r' not in k:
+                if "r" not in k:
                     res[k] = (v, self.board[v])
         else:
             for k, v in adjacent_coords.items():
@@ -398,7 +490,7 @@ class Board:
         Por exemplo:
             $ python3 bimaru.py < input_T01
 
-            > from sys import stdin 
+            > from sys import stdin
             > line = stdin.readline().split()
         """
         res = {}
@@ -416,7 +508,9 @@ class Board:
         res["board"] = board
         return res
 
+
 class BimaruState:
+    state_id: int
 
     def __init__(self, board: Board):
         self.boardState = board
@@ -431,30 +525,29 @@ class BimaruState:
 
 
 class Bimaru(Problem):
-
     def __init__(self, boardS: Board):
         """O construtor especifica o estado inicial."""
-        # possivelmente pode dar problemas porque ocupa muito espaço, se der reduzir o que se passa no estado inicial para apenas a board maybe
+        # possivelmente pode dar problemas porque ocupa muito espaço, se der reduzir o que se passa no estado inicial
+        # para apenas a board maybe
         self.initial = BimaruState(boardS)
 
     # Decidir se se mete as águas junto com os barcos ou só os barcos e depois as águas nas ações
     def actions(self, state: BimaruState):
-        #talvez gerar também todos os estados possíveis que se podem ligar às hints existentes em vez de tamanho fixo
+        # talvez gerar também todos os estados possíveis que se podem ligar às hints existentes em vez de tamanho fixo
         # Gerar barcos dependendo da profundidade
         # Começar por fazer pesquisa cega
         # Fazer as grids possíveis de somar
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
-        actions=[]
-        boat_length=0
-        for key in range(1,5):
-            if state.boardState.available_boats[key]!=0:
-                boat_length=key
+        actions = []
+        boat_length = 0
+        for key in range(1, 5):
+            if state.boardState.available_boats[key] != 0:
+                boat_length = key
 
-        for i in filter(lambda x: x>=boat_length, state.boardState.empty_spots_row):
-
+        for i in filter(lambda x: x >= boat_length, state.boardState.empty_spots_row):
             pass
-        for j in filter(lambda x: x>=boat_length, state.boardState.empty_spots_row):
+        for j in filter(lambda x: x >= boat_length, state.boardState.empty_spots_row):
             pass
 
     def result(self, state: BimaruState, action):
@@ -463,13 +556,20 @@ class Bimaru(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        new_board = state.boardState.board+action["board"]
+        new_board = state.boardState.board + action["board"]
         state.boardState.board = new_board
-        new_state = BimaruState(Board(
-            new_board, action["rows"], action["columns"], state.boardState.available_boats))
+        new_state = BimaruState(
+            Board(
+                new_board,
+                action["rows"],
+                action["columns"],
+                state.boardState.available_boats,
+            )
+        )
         new_state.boardState.decrease_available_boats(action["boat_length"])
         # Isto pode ser lento também, é possível que seja melhor definir as águas na ação e só somar ao invés de correr o set_water sempre
         # Ou então correr set_water apenas para as coordenadas onde foi metido o barco, isso era capaz de ser bastante melhor ideia
+        # A FUNÇÃO SET_WATER() RECEBE AS COORDENADAS DO BARCO COM AS PEÇAS
         new_state.boardState.set_water()
         new_state.boardState.find_empty_spots()
         return new_state
@@ -479,8 +579,35 @@ class Bimaru(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        # TODO
-        pass
+        solved = True
+
+        curr_board = state.boardState.board
+        rows = state.boardState.rows
+        cols = state.boardState.columns
+
+        for r_i in range(len(rows)):
+            n_boats = sum(
+                [1 for e in curr_board[r_i, :] if e != "" and e != "." and e != "W"]
+            )
+            if n_boats != rows[r_i]:
+                solved = False
+                return solved
+
+        for c_i in range(len(cols)):
+            n_boats = sum(
+                [1 for e in curr_board[:, c_i] if e != "" and e != "." and e != "W"]
+            )
+            if n_boats != cols[c_i]:
+                solved = False
+                return solved
+
+        for (r, c), value in np.ndenumerate(curr_board):
+            if curr_board[r, c] == "":
+                solved = False
+                return solved
+
+        return solved
+
 
     def h(self, node: Node):
         # Dar uma heurística melhor aos barcos maiores e também aos barcos que cumpram as condições das hints
@@ -493,16 +620,16 @@ class Bimaru(Problem):
 
 if __name__ == "__main__":
     parsed = Board.parse_instance()
-    board = Board(parsed["board"], parsed["rows"], parsed["columns"])
-    board.decrease_hint_boats()
-    board.set_initial_water()
-    board.find_empty_spots()
-    result = depth_first_tree_search(Bimaru(board))
+    initial_board = Board(parsed["board"], parsed["rows"], parsed["columns"])
+    initial_board.decrease_hint_boats()
+    initial_board.set_initial_water()
+    initial_board.find_empty_spots()
+    result = depth_first_tree_search(Bimaru(initial_board))
 
     # result=depth_first_tree_search(prob)
     # print(result)
-    p = Bimaru(board)
-    p.initial.boardState.set_boat(boat_coords=[(2, 9, 't'), (3, 9, 'b')])
+    p = Bimaru(initial_board)
+    p.initial.boardState.set_boat(boat_coords=[(2, 9, "t"), (3, 9, "b")])
 
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,

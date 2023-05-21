@@ -16,7 +16,6 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
-import os
 from typing import Dict, List, Optional, Tuple
 import numpy.typing as npt
 import numpy as np
@@ -39,21 +38,17 @@ class Board:
         board,
         rows,
         columns,
-        available_boats=None,
+        available_boats=[4,3,2,1],
     ):
         # ARGUMENTO DEFAULT COMO DICIONÁRIO ESTAVA A DAR UM WARNING
-        if available_boats is None:
-            available_boats = {1: 4, 2: 3, 3: 2, 4: 1}
 
         self.board = board
         self.rows: List[int] = rows
         self.columns: List[int] = columns
         self.available_boats = available_boats
-        self.decrease_hint_boats()
 
         self.empty_spots_row = np.zeros(10, dtype=int)
         self.empty_spots_col = np.zeros(10, dtype=int)
-        self.find_empty_spots()
 
     # Correr isto sempre depois do set_water?
     def find_empty_spots(self):
@@ -511,19 +506,21 @@ class Board:
                         if len(direction) > 1:
                             self.set_value(v[0][0], v[0][1], ".")
 
-        logger.info(self.board)
-        logger.info(f"ROWS: {self.rows}")
-        logger.info(f"COLUMNS: {self.columns}")
+        #logger.info(self.board)
+        #logger.info(f"ROWS: {self.rows}")
+        #logger.info(f"COLUMNS: {self.columns}")
 
     def set_boat(self, boat_coords: List[Tuple[int, int, str]]):
         """Set water around placed boat."""
+        new_board=np.copy(self.board)
         # SETTING BOAT
         for boat_piece in boat_coords:
-            self.set_value(row=boat_piece[0], col=boat_piece[1], value=boat_piece[2])
+            new_board[(boat_piece[0], boat_piece[1])]=boat_piece[2]
 
         # RESOLVING WATER
         boat_coords = [(e[0], e[1]) for e in boat_coords]
         boat_adj = []
+        logger.debug(boat_coords)
         for coord in boat_coords:
             adj_coords = self.get_adjacent_values(coord[0], coord[1])
             adj_coords = [v[0] for v in adj_coords.values()]
@@ -531,34 +528,36 @@ class Board:
 
         boat_adj = set(boat_adj) - set(boat_coords)
         for coord in boat_adj:
+            new_board[(coord[0], coord[1])]="."
             self.set_value(row=coord[0], col=coord[1], value=".")
-
+    
         # THE PART BELOW SHOULD BE A SEPARATE FUNCTION
         # IT IS REPEATED
         row_indexes = [e[0] for e in boat_coords]
         col_indexes = [e[1] for e in boat_coords]
         for r_i in row_indexes:
             n_boats = sum(
-                [1 for e in self.board[r_i, :] if e != "" and e != "." and e != "W"]
+                [1 for e in new_board[r_i, :] if e != "" and e != "." and e != "W"]
             )
-            logger.debug(n_boats)
             if n_boats == self.rows[r_i]:
                 for n in range(len(self.columns)):
-                    if self.get_value(row=r_i, col=n) == "":
-                        self.set_value(row=r_i, col=n, value=".")
+                    if new_board[(r_i,n)]=="":
+                        new_board[(r_i,n)]="."
 
         for c_i in col_indexes:
             n_boats = sum(
-                [1 for e in self.board[:, c_i] if e != "" and e != "." and e != "W"]
+                [1 for e in new_board[:, c_i] if e != "" and e != "." and e != "W"]
             )
             if n_boats == self.columns[c_i]:
                 for m in range(len(self.rows)):
-                    if self.get_value(row=m, col=c_i) == "":
-                        self.set_value(row=m, col=c_i, value=".")
+                    if new_board[(m,c_i)] == "":
+                        new_board[(m,c_i)]="."
 
-        logger.info(self.board)
+        logger.info(new_board)
         logger.info(f"ROWS: {self.rows}")
         logger.info(f"COLUMNS: {self.columns}")
+
+        return new_board
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
@@ -567,7 +566,7 @@ class Board:
     def decrease_available_boats(self, boat_length):
         """Tira da lista de barcos disponíveis
         um barco de tamanho pretendido"""
-        self.available_boats[boat_length] -= 1
+        return [self.available_boats[i] if i!=boat_length-1 else self.available_boats[i]-1 for i in range(4)]
 
     def decrease_hint_boats(self):
         """Deteta os barcos que já foram colocados e
@@ -730,20 +729,21 @@ class Bimaru(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         actions = []
+
         boat_length = 0
         for key in range(1, 5):
-            if state.boardState.available_boats[key] != 0:
+            if state.boardState.available_boats[key-1] != 0:
                 boat_length = key
 
         for i in range(len(state.boardState.empty_spots_row)):
-            if state.boardState.empty_spots_row[i]>=boat_length:
+            if state.boardState.rows[i]>=boat_length:
                 boats=state.boardState.horizontal_boats(i,boat_length)
                 for boat in boats:
                     actions.append({"coords": boat, "boat_length": boat_length})
 
         for j in range(len(state.boardState.empty_spots_col)):
-            if state.boardState.empty_spots_col[j]>=boat_length:
-                boats=state.boardState.vertical_boats(i,boat_length)
+            if state.boardState.columns[j]>=boat_length:
+                boats=state.boardState.vertical_boats(j,boat_length)
                 for boat in boats:
                     actions.append({"coords": boat, "boat_length": boat_length})
         return actions
@@ -753,17 +753,9 @@ class Bimaru(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        new_state = BimaruState(
-            Board(
-                state.boardState.board,
-                state.boardState.rows,
-                state.boardState.columns,
-                state.boardState.available_boats,
-            )
-        )
-
-        new_state.boardState.decrease_available_boats(action["boat_length"])
-        new_state.boardState.set_boat(action["coords"])
+        #perguntar porque é que o python não considera como objetos diferentes e faz referências quando eu faço a new_board com os mesmos valores interiores
+        new_board=Board(state.boardState.set_boat(action["coords"]), state.boardState.rows, state.boardState.columns, state.boardState.decrease_available_boats(action["boat_length"]))
+        new_state=BimaruState(new_board)
         new_state.boardState.find_empty_spots()
         return new_state
 
@@ -816,6 +808,7 @@ if __name__ == "__main__":
     initial_board.decrease_hint_boats()
     initial_board.set_initial_water()
     initial_board.find_empty_spots()
+    logger.info(initial_board.board)
     problem=Bimaru(initial_board)
     result = depth_first_tree_search(problem)
     logger.info(result)

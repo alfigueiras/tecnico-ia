@@ -678,6 +678,13 @@ class Board:
             res = (self.board[(row, col - 1)], self.board[(row, col + 1)])
 
         return res
+    
+    def print(self):
+        """Dá print na board final"""
+        res=""
+        for row in self.board:
+            res+="".join(row)+"\n"
+        print(res)
 
     @staticmethod
     def parse_instance():
@@ -817,10 +824,11 @@ if __name__ == "__main__":
     initial_board.decrease_hint_boats()
     initial_board.set_initial_water()
     initial_board.find_boats_and_empty_spots()
-    logger.info(initial_board.board)
+    #logger.info(initial_board.board)
     problem=Bimaru(initial_board)
     result = depth_first_tree_search(problem)
-    logger.info(result.state.boardState.board)
+    result.state.boardState.print()
+
 
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,

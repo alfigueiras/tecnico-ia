@@ -46,16 +46,27 @@ class Board:
         self.rows: List[int] = rows
         self.columns: List[int] = columns
         self.available_boats = available_boats
-
         self.empty_spots_row = np.zeros(10, dtype=int)
         self.empty_spots_col = np.zeros(10, dtype=int)
+        self.boats_placed_row = np.zeros(10, dtype=int)
+        self.boats_placed_col = np.zeros(10, dtype=int)
+        self.boats_hint_row = np.zeros(10, dtype=int)
+        self.boats_hint_col = np.zeros(10, dtype=int)
+        
 
     # Correr isto sempre depois do set_water?
-    def find_empty_spots(self):
+    def find_boats_and_empty_spots(self):
         for (row, col), value in np.ndenumerate(self.board):
             if value == "":
                 self.empty_spots_row[row] += 1
                 self.empty_spots_col[col] += 1
+            elif value not in [".","","W"]:
+                self.boats_placed_row[row]+=1
+                self.boats_placed_col[col]+=1
+                if value.isupper():
+                    self.boats_hint_row[row]+=1
+                    self.boats_hint_col[col]+=1
+
 
     def horizontal_boats(self, row, boat_length):
         board_row = self.board[row, :]
@@ -64,8 +75,9 @@ class Board:
         if boat_length == 1:
             for i, val in enumerate(board_row):
                 if val == "":
-                    coord = (row, i)
-                    if self.empty_spots_col[i] >= 1:
+                    coord = (row, i, "c")
+                    #Vê os barcos que é suposto estar na coluna e subtrai os que já foram colocados, se for maior que 1 é porque ainda se pode colocar uma peça nessa
+                    if self.columns[i]-self.boats_placed_col[i] >= 1:
                         can_put = True
                         for value in self.get_adjacent_values(row, i).values():
                             if value[1] not in ["W", ".", ""]:
@@ -88,8 +100,7 @@ class Board:
                         ]
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]] >= 1 and not cor[2].isupper():
-
+                            if self.columns[cor[1]]-self.boats_placed_col[cor[1]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -139,7 +150,7 @@ class Board:
                             j = 1
                         can_put = True                        
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]] >= 1 and not cor[2].isupper():
+                            if self.columns[cor[1]]-self.boats_placed_col[cor[1]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -201,7 +212,7 @@ class Board:
                             j = 2
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]] >= 1 and not cor[2].isupper():
+                            if self.columns[cor[1]]-self.boats_placed_col[cor[1]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -263,7 +274,7 @@ class Board:
         if boat_length == 1:
             for i, val in enumerate(board_col):
                 if val == "":
-                    coord = (i,col)
+                    coord = (i,col, "c")
                     if self.empty_spots_row[i] >= 1:
                         can_put = True
                         for value in self.get_adjacent_values(i,col).values():
@@ -287,7 +298,7 @@ class Board:
                         ]
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_row[cor[0]] >= 1 and not cor[2].isupper():
+                            if self.rows[cor[0]]-self.boats_placed_row[cor[0]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -336,7 +347,7 @@ class Board:
                             j = 1
                         can_put = True                        
                         for cor in coords:
-                            if self.empty_spots_row[cor[0]] >= 1 and not cor[2].isupper():
+                            if self.rows[cor[0]]-self.boats_placed_row[cor[0]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -397,7 +408,7 @@ class Board:
                             j = 2
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_row[cor[0]] >= 1 and not cor[2].isupper():
+                            if self.rows[cor[0]]-self.boats_placed_row[cor[0]] >= 1 >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -504,6 +515,7 @@ class Board:
         #logger.info(f"ROWS: {self.rows}")
         #logger.info(f"COLUMNS: {self.columns}")
 
+    #Está a substituir os "W" já existentes na board, não devia
     def set_boat(self, boat_coords: List[Tuple[int, int, str]]):
         """Set water around placed boat."""
         new_board=np.copy(self.board)
@@ -514,7 +526,6 @@ class Board:
         # RESOLVING WATER
         boat_coords = [(e[0], e[1]) for e in boat_coords]
         boat_adj = []
-        logger.debug(boat_coords)
         for coord in boat_coords:
             adj_coords = self.get_adjacent_values(coord[0], coord[1])
             adj_coords = [v[0] for v in adj_coords.values()]
@@ -522,8 +533,8 @@ class Board:
 
         boat_adj = set(boat_adj) - set(boat_coords)
         for coord in boat_adj:
-            new_board[(coord[0], coord[1])]="."
-            self.set_value(row=coord[0], col=coord[1], value=".")
+            if coord!="W":
+                new_board[(coord[0], coord[1])]="."
     
         # THE PART BELOW SHOULD BE A SEPARATE FUNCTION
         # IT IS REPEATED
@@ -547,9 +558,9 @@ class Board:
                     if new_board[(m,c_i)] == "":
                         new_board[(m,c_i)]="."
 
-        logger.info(new_board)
-        logger.info(f"ROWS: {self.rows}")
-        logger.info(f"COLUMNS: {self.columns}")
+        #logger.info(new_board)
+        #logger.info(f"ROWS: {self.rows}")
+        #logger.info(f"COLUMNS: {self.columns}")
 
         return new_board
 
@@ -616,9 +627,12 @@ class Board:
             "br": (row + 1, col + 1),
         }
         res = {}
+        for k,v in adjacent_coords.items():
+            if v[0]>=0 and v[0]<10 and v[1]>=0 and v[1]<10:
+                res[k]=(v,self.board[v]) 
+        """ 
         if row == 0:
             for k, v in adjacent_coords.items():
-                # if t != k?
                 if "t" not in k:
                     res[k] = (v, self.board[v])
         elif row == 9:
@@ -635,8 +649,7 @@ class Board:
                     res[k] = (v, self.board[v])
         else:
             for k, v in adjacent_coords.items():
-                res[k] = (v, self.board[v])
-
+                res[k] = (v, self.board[v]) """
         return res
 
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
@@ -729,14 +742,16 @@ class Bimaru(Problem):
             if state.boardState.available_boats[key-1] != 0:
                 boat_length = key
 
-        for i in range(len(state.boardState.empty_spots_row)):
-            if state.boardState.rows[i]>=boat_length:
+        for i in range(10):
+            #Possivelmente vão ser valores a mais por causa do hint_row mas penso que seja a melhor opção sem aumentar demasiado o custo do código
+            #Pensar em maneira melhor de fazer este +state.boardState.boats_hint_row[i]
+            if state.boardState.rows[i]-state.boardState.boats_placed_row[i]+state.boardState.boats_hint_row[i] >= boat_length:
                 boats=state.boardState.horizontal_boats(i,boat_length)
                 for boat in boats:
                     actions.append({"coords": boat, "boat_length": boat_length})
 
-        for j in range(len(state.boardState.empty_spots_col)):
-            if state.boardState.columns[j]>=boat_length:
+        for j in range(10):
+            if state.boardState.columns[j]-state.boardState.boats_placed_col[j] + state.boardState.boats_hint_col[j] >= boat_length:
                 boats=state.boardState.vertical_boats(j,boat_length)
                 for boat in boats:
                     actions.append({"coords": boat, "boat_length": boat_length})
@@ -750,7 +765,7 @@ class Bimaru(Problem):
         #perguntar porque é que o python não considera como objetos diferentes e faz referências quando eu faço a new_board com os mesmos valores interiores
         new_board=Board(state.boardState.set_boat(action["coords"]), state.boardState.rows, state.boardState.columns, state.boardState.decrease_available_boats(action["boat_length"]))
         new_state=BimaruState(new_board)
-        new_state.boardState.find_empty_spots()
+        new_state.boardState.find_boats_and_empty_spots()
         return new_state
 
     def goal_test(self, state: BimaruState):
@@ -801,11 +816,12 @@ if __name__ == "__main__":
     initial_board = Board(parsed["board"], parsed["rows"], parsed["columns"])
     initial_board.decrease_hint_boats()
     initial_board.set_initial_water()
-    initial_board.find_empty_spots()
+    initial_board.find_boats_and_empty_spots()
     logger.info(initial_board.board)
     problem=Bimaru(initial_board)
-    result = breadth_first_tree_search(problem)
-    logger.info(result)
+    result = depth_first_tree_search(problem)
+    logger.info(result.state.boardState.board)
+
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.

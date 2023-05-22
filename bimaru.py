@@ -88,7 +88,7 @@ class Board:
                         ]
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]] >= 1:
+                            if self.empty_spots_col[cor[1]] >= 1 and not cor[2].isupper():
 
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
@@ -139,7 +139,7 @@ class Board:
                             j = 1
                         can_put = True                        
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]] >= 1:
+                            if self.empty_spots_col[cor[1]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -201,7 +201,7 @@ class Board:
                             j = 2
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_col[cor[1]] >= 1:
+                            if self.empty_spots_col[cor[1]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -287,7 +287,7 @@ class Board:
                         ]
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_row[cor[0]] >= 1:
+                            if self.empty_spots_row[cor[0]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -336,7 +336,7 @@ class Board:
                             j = 1
                         can_put = True                        
                         for cor in coords:
-                            if self.empty_spots_row[cor[0]] >= 1:
+                            if self.empty_spots_row[cor[0]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():
@@ -804,7 +804,7 @@ if __name__ == "__main__":
     initial_board.find_empty_spots()
     logger.info(initial_board.board)
     problem=Bimaru(initial_board)
-    result = depth_first_tree_search(problem)
+    result = breadth_first_tree_search(problem)
     logger.info(result)
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,

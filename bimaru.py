@@ -83,9 +83,8 @@ class Board:
                     if j >= 2:
                         char_b = ["l", "r"]
                         coords = [
-                            (row, i + k - 1, char_b[k])
+                            (row, i + k - 1, char_b[k]) if char_b[k].upper() != self.get_value(row, i + k - 1) else (row, i + k - 1,char_b[k].upper())
                             for k in range(0, 2)
-                            if char_b[k].upper() != self.get_value(row, i - k - 1)
                         ]
                         can_put = True
                         for cor in coords:
@@ -131,9 +130,8 @@ class Board:
                     if j >= 3:
                         char_b = ["l", "m", "r"]
                         coords = [
-                            (row, i + k - 2, char_b[k])
+                            (row, i + k - 2, char_b[k]) if char_b[k].upper() != self.get_value(row, i + k - 2) else (row, i + k - 2,char_b[k].upper())
                             for k in range(0, 3)
-                            if char_b[k].upper() != self.get_value(row, i + k - 2)
                         ]
                         # Ter cuidado com isto
                         if self.get_value(row,i - 2) == "M":
@@ -194,9 +192,8 @@ class Board:
                     if j >= 4:
                         char_b = ["l", "m", "m", "r"]
                         coords = [
-                            (row, i + k - 3, char_b[k])
+                            (row, i + k - 3, char_b[k]) if char_b[k].upper() != self.get_value(row, i + k - 3) else (row, i + k - 3,char_b[k].upper())
                             for k in range(0, 4)
-                            if char_b[k].upper() != self.get_value(row, i + k - 3)
                         ]
                         # cuidado
                         if self.get_value(row,i - 3) == "M":
@@ -285,9 +282,8 @@ class Board:
                     if j >= 2:
                         char_b = ["t", "b"]
                         coords = [
-                            (i + k - 1, col, char_b[k])
+                            (i + k - 1, col, char_b[k]) if char_b[k].upper() != self.get_value(i + k - 1, col) else (i+k-1,col,char_b[k].upper())
                             for k in range(0, 2)
-                            if char_b[k].upper() != self.get_value(i + k - 1,col)
                         ]
                         can_put = True
                         for cor in coords:
@@ -331,9 +327,8 @@ class Board:
                     if j >= 3:
                         char_b = ["t", "m", "b"]
                         coords = [
-                            (i + k - 2, col, char_b[k])
+                            (i + k - 2, col, char_b[k]) if char_b[k].upper() != self.get_value(i + k - 2, col) else (i+k-2,col,char_b[k].upper())
                             for k in range(0, 3)
-                            if char_b[k].upper() != self.get_value(i + k - 2, col)
                         ]
                         # Ter cuidado com isto
                         if self.get_value(i - 2, col) == "M":
@@ -393,9 +388,8 @@ class Board:
                     if j >= 4:
                         char_b = ["t", "m", "m", "b"]
                         coords = [
-                            (i + k - 3, col, char_b[k])
-                            for k in range(0, 4)
-                            if char_b[k].upper() != self.get_value(i + k - 3, col)
+                            (i + k - 3, col, char_b[k])  if char_b[k].upper() != self.get_value(i + k - 3, col) else (i+k-3,col,char_b[k].upper())
+                            for k in range(0, 4) 
                         ]
                         # cuidado
                         if self.get_value(i - 3, col) == "M":
@@ -403,7 +397,7 @@ class Board:
                             j = 2
                         can_put = True
                         for cor in coords:
-                            if self.empty_spots_row[cor[0]] >= 1:
+                            if self.empty_spots_row[cor[0]] >= 1 and not cor[2].isupper():
                                 for key, value in self.get_adjacent_values(
                                     cor[0], cor[1]
                                 ).items():

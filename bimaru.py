@@ -5,7 +5,7 @@
 # Grupo 00:
 # 00000 Nome1
 # 00000 Nome2
-import logging
+
 import sys
 from search import (
     Problem,
@@ -16,20 +16,8 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
-from typing import Dict, List, Optional, Tuple
-import numpy.typing as npt
+
 import numpy as np
-
-logging.basicConfig(
-    # CHANGE LEVEL TO SEE ONLY INFO LOGS
-    level="DEBUG",
-    format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d]: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    stream=sys.stdout,
-)
-logger = logging.getLogger(__name__)
-
-
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
@@ -43,8 +31,8 @@ class Board:
         # ARGUMENTO DEFAULT COMO DICIONÁRIO ESTAVA A DAR UM WARNING
 
         self.board = board
-        self.rows: List[int] = rows
-        self.columns: List[int] = columns
+        self.rows = rows
+        self.columns = columns
         self.available_boats = available_boats
         self.empty_spots_row = np.zeros(10, dtype=int)
         self.empty_spots_col = np.zeros(10, dtype=int)
@@ -105,7 +93,6 @@ class Board:
                                     cor[0], cor[1]
                                 ).items():
                                     if value[1] not in ["W", ".", ""]:
-
                                         if (
                                             key == "l"
                                             and value[1] == "L"
@@ -516,7 +503,7 @@ class Board:
         #logger.info(f"COLUMNS: {self.columns}")
 
     #Está a substituir os "W" já existentes na board, não devia
-    def set_boat(self, boat_coords: List[Tuple[int, int, str]]):
+    def set_boat(self, boat_coords):
         """Set water around placed boat."""
         new_board=np.copy(self.board)
         # SETTING BOAT
@@ -614,7 +601,7 @@ class Board:
 
     def get_adjacent_values(
         self, row: int, col: int
-    ) -> Dict[str, Tuple[Tuple[int, int], str]]:
+    ):
         """Returns dictionary with all the adjacent coordinates plus their values."""
         adjacent_coords = {
             "t": (row - 1, col),
@@ -630,29 +617,9 @@ class Board:
         for k,v in adjacent_coords.items():
             if v[0]>=0 and v[0]<10 and v[1]>=0 and v[1]<10:
                 res[k]=(v,self.board[v]) 
-        """ 
-        if row == 0:
-            for k, v in adjacent_coords.items():
-                if "t" not in k:
-                    res[k] = (v, self.board[v])
-        elif row == 9:
-            for k, v in adjacent_coords.items():
-                if "b" not in k:
-                    res[k] = (v, self.board[v])
-        elif col == 0:
-            for k, v in adjacent_coords.items():
-                if "l" not in k:
-                    res[k] = (v, self.board[v])
-        elif col == 9:
-            for k, v in adjacent_coords.items():
-                if "r" not in k:
-                    res[k] = (v, self.board[v])
-        else:
-            for k, v in adjacent_coords.items():
-                res[k] = (v, self.board[v]) """
         return res
 
-    def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
+    def adjacent_vertical_values(self, row: int, col: int):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
         if row == 0:
@@ -665,7 +632,7 @@ class Board:
             res = (self.board[(row - 1, col)], self.board[(row + 1, col)])
         return res
 
-    def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
+    def adjacent_horizontal_values(self, row: int, col: int):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
         if col == 0:
@@ -683,7 +650,10 @@ class Board:
         """Dá print na board final"""
         res=""
         for row in self.board:
-            res+="".join(row)+"\n"
+            if res=="":
+                res+="".join(row)
+            else:
+                res+="\n"+"".join(row)
         print(res)
 
     @staticmethod
@@ -698,15 +668,15 @@ class Board:
             > line = stdin.readline().split()
         """
         res = {}
-        board: npt.ArrayLike[Optional[str]] = np.empty([10, 10], dtype=str)
+        board= np.empty([10, 10], dtype=str)
         board[:] = ""
         for line in sys.stdin:
             split_line = line.split("\t")
             if split_line[0] == "ROW":
                 # Mudar para np arrays?
-                res["rows"]: List[int] = [int(e) for e in split_line[1:]]
+                res["rows"] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "COLUMN":
-                res["columns"]: List[int] = [int(e) for e in split_line[1:]]
+                res["columns"] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "HINT":
                 board[(int(split_line[1]), int(split_line[2]))] = split_line[-1]
         res["board"] = board
@@ -780,7 +750,6 @@ class Bimaru(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        solved = True
 
         curr_board = state.boardState.board
         rows = state.boardState.rows
@@ -791,22 +760,23 @@ class Bimaru(Problem):
                 [1 for e in curr_board[r_i, :] if e != "" and e != "." and e != "W"]
             )
             if n_boats != rows[r_i]:
-                solved = False
-                return solved
+                return False
 
         for c_i in range(len(cols)):
             n_boats = sum(
                 [1 for e in curr_board[:, c_i] if e != "" and e != "." and e != "W"]
             )
             if n_boats != cols[c_i]:
-                solved = False
-                return solved
+                return False
+
+        #print(state.boardState.available_boats)
+        #if state.boardState.available_boats!=[0,0,0,0]:
+        #    return False
 
         for (r, c), value in np.ndenumerate(curr_board):
             if curr_board[r, c] == "":
-                solved = False
-                return solved
-        return solved
+                return False
+        return True
 
 
     def h(self, node: Node):

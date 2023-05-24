@@ -498,6 +498,7 @@ class Board:
                         if len(direction) > 1:
                             self.set_value(v[0][0], v[0][1], ".")
 
+        
         #logger.info(self.board)
         #logger.info(f"ROWS: {self.rows}")
         #logger.info(f"COLUMNS: {self.columns}")
@@ -505,6 +506,7 @@ class Board:
     #Está a substituir os "W" já existentes na board, não devia
     def set_boat(self, boat_coords):
         """Set water around placed boat."""
+        #Tentar mudar isto em vez de fazer np.copy só somar os valores à self.board, começar com uma board vazia, meter as posições que vão mudar
         new_board=np.copy(self.board)
         # SETTING BOAT
         for boat_piece in boat_coords:
@@ -668,8 +670,7 @@ class Board:
             > line = stdin.readline().split()
         """
         res = {}
-        board= np.empty([10, 10], dtype=str)
-        board[:] = ""
+        board= np.full([10, 10],"", dtype=str)
         for line in sys.stdin:
             split_line = line.split("\t")
             if split_line[0] == "ROW":

@@ -498,6 +498,7 @@ class Board:
                         if len(direction) > 1:
                             self.set_value(v[0][0], v[0][1], ".")
 
+        
         #logger.info(self.board)
         #logger.info(f"ROWS: {self.rows}")
         #logger.info(f"COLUMNS: {self.columns}")
@@ -505,6 +506,7 @@ class Board:
     #Está a substituir os "W" já existentes na board, não devia
     def set_boat(self, boat_coords):
         """Set water around placed boat."""
+        #Tentar mudar isto em vez de fazer np.copy só somar os valores à self.board, começar com uma board vazia, meter as posições que vão mudar
         new_board=np.copy(self.board)
         # SETTING BOAT
         for boat_piece in boat_coords:
@@ -520,7 +522,7 @@ class Board:
 
         boat_adj = set(boat_adj) - set(boat_coords)
         for coord in boat_adj:
-            if coord!="W":
+            if self.get_value(coord[0], coord[1])!="W":
                 new_board[(coord[0], coord[1])]="."
     
         # THE PART BELOW SHOULD BE A SEPARATE FUNCTION
@@ -570,7 +572,7 @@ class Board:
                 k = 0
                 stop = False
                 if value == "C":
-                    self.decrease_available_boats(1)
+                    self.available_boats=self.decrease_available_boats(1)
                 elif value == "T":
                     while k < 3 and not stop:
                         v_vals = self.adjacent_vertical_values(row + k, col)
@@ -580,7 +582,7 @@ class Board:
                             tested_coords.extend(
                                 [(row + j, col) for j in range(1, k + 2)]
                             )
-                            self.decrease_available_boats(k + 2)
+                            self.available_boats=self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
                 elif value == "L":
@@ -592,7 +594,7 @@ class Board:
                             tested_coords.extend(
                                 [(row, col + j) for j in range(1, k + 2)]
                             )
-                            self.decrease_available_boats(k + 2)
+                            self.available_boats=self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
 
@@ -668,8 +670,7 @@ class Board:
             > line = stdin.readline().split()
         """
         res = {}
-        board= np.empty([10, 10], dtype=str)
-        board[:] = ""
+        board= np.full([10, 10],"", dtype=str)
         for line in sys.stdin:
             split_line = line.split("\t")
             if split_line[0] == "ROW":
@@ -769,9 +770,8 @@ class Bimaru(Problem):
             if n_boats != cols[c_i]:
                 return False
 
-        #print(state.boardState.available_boats)
-        #if state.boardState.available_boats!=[0,0,0,0]:
-        #    return False
+        if state.boardState.available_boats!=[0,0,0,0]:
+            return False
 
         for (r, c), value in np.ndenumerate(curr_board):
             if curr_board[r, c] == "":

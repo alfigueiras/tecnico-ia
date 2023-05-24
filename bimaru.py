@@ -520,7 +520,7 @@ class Board:
 
         boat_adj = set(boat_adj) - set(boat_coords)
         for coord in boat_adj:
-            if coord!="W":
+            if self.get_value(coord[0], coord[1])!="W":
                 new_board[(coord[0], coord[1])]="."
     
         # THE PART BELOW SHOULD BE A SEPARATE FUNCTION
@@ -570,7 +570,7 @@ class Board:
                 k = 0
                 stop = False
                 if value == "C":
-                    self.decrease_available_boats(1)
+                    self.available_boats=self.decrease_available_boats(1)
                 elif value == "T":
                     while k < 3 and not stop:
                         v_vals = self.adjacent_vertical_values(row + k, col)
@@ -580,7 +580,7 @@ class Board:
                             tested_coords.extend(
                                 [(row + j, col) for j in range(1, k + 2)]
                             )
-                            self.decrease_available_boats(k + 2)
+                            self.available_boats=self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
                 elif value == "L":
@@ -592,7 +592,7 @@ class Board:
                             tested_coords.extend(
                                 [(row, col + j) for j in range(1, k + 2)]
                             )
-                            self.decrease_available_boats(k + 2)
+                            self.available_boats=self.decrease_available_boats(k + 2)
                             stop = True
                         k += 1
 
@@ -769,9 +769,8 @@ class Bimaru(Problem):
             if n_boats != cols[c_i]:
                 return False
 
-        #print(state.boardState.available_boats)
-        #if state.boardState.available_boats!=[0,0,0,0]:
-        #    return False
+        if state.boardState.available_boats!=[0,0,0,0]:
+            return False
 
         for (r, c), value in np.ndenumerate(curr_board):
             if curr_board[r, c] == "":

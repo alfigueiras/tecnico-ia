@@ -26,7 +26,8 @@ class Board:
         board,
         rows,
         columns,
-        available_boats=[4,3,2,1],
+        hints,
+        available_boats=[4,3,2,1] 
     ):
         # ARGUMENTO DEFAULT COMO DICIONÁRIO ESTAVA A DAR UM WARNING
 
@@ -34,6 +35,7 @@ class Board:
         self.rows = rows
         self.columns = columns
         self.available_boats = available_boats
+        self.hints=hints
         self.empty_spots_row = np.zeros(10, dtype=int)
         self.empty_spots_col = np.zeros(10, dtype=int)
         self.boats_placed_row = np.zeros(10, dtype=int)
@@ -73,7 +75,7 @@ class Board:
                                 break
                         if can_put:
                             boat_coords.append([coord])
-        if boat_length == 2:
+        elif boat_length == 2:
             j = 0
             for i, val in enumerate(board_row):
                 if val == "L":
@@ -116,7 +118,7 @@ class Board:
                         j = 0
                 else:
                     j = 0
-        if boat_length == 3:
+        elif boat_length == 3:
             j = 0
             for i, val in enumerate(board_row):
                 if val == "L":
@@ -178,7 +180,7 @@ class Board:
                 else:
                     j = 0
         # Possivelmente posso adaptar o de 3 mas it is what it is
-        if boat_length == 4:
+        elif boat_length == 4:
             j = 0
             for i, val in enumerate(board_row):
                 if val == "L":
@@ -270,7 +272,7 @@ class Board:
                                 break
                         if can_put:
                             boat_coords.append([coord])
-        if boat_length == 2:
+        elif boat_length == 2:
             j = 0
             for i, val in enumerate(board_col):
                 if val == "T":
@@ -313,7 +315,7 @@ class Board:
                         j = -1
                 else:
                     j = 0
-        if boat_length == 3:
+        elif boat_length == 3:
             j = 0
             for i, val in enumerate(board_col):
                 if val == "T":
@@ -367,6 +369,7 @@ class Board:
                                             can_put = False
                                             break
                             else:
+                                #?????????
                                 break
                         if can_put and coords!=[]:
                             boat_coords.append(coords)
@@ -374,7 +377,7 @@ class Board:
                         j = -1
                 else:
                     j = 0
-        if boat_length == 4:
+        elif boat_length == 4:
             j = 0
             for i, val in enumerate(board_col):
                 if val == "T":
@@ -508,6 +511,7 @@ class Board:
         """Set water around placed boat."""
         #Tentar mudar isto em vez de fazer np.copy só somar os valores à self.board, começar com uma board vazia, meter as posições que vão mudar
         new_board=np.copy(self.board)
+        
         # SETTING BOAT
         for boat_piece in boat_coords:
             new_board[(boat_piece[0], boat_piece[1])]=boat_piece[2]
@@ -562,6 +566,158 @@ class Board:
         um barco de tamanho pretendido"""
         return [self.available_boats[i] if i!=boat_length-1 else self.available_boats[i]-1 for i in range(4)]
 
+    def generate_hint_boats(self,row, col, val, isM=False):
+        boat_coords=[]
+        tb=[["t","b"],["t","m","b"],["t","m","m","b"]]
+        lr=[["l","r"],["l","m","r"],["l","m","m","r"]]
+        if val=="M":
+            res=[]
+            if row-1>=0:
+                res+=self.generate_hint_boats(row-1,col,"T")
+            if row+1<10:
+                res+=self.generate_hint_boats(row+1,col,"B")
+            if col-1>=0:
+                res+=self.generate_hint_boats(row,col-1,"L")
+            if col+1<10:
+                res+=self.generate_hint_boats(row,col+1,"R")
+            res=[e for e in res if len(e)>2]
+            for boat in res:
+                can_put=True
+                for piece in boat:
+                    if piece[0]>=0 and piece[0]<10 and piece[1]>=0 and piece[1]<10:
+                        pass
+                    else:
+                        can_put=False
+                        break
+                if can_put:
+                    boat_coords.append(tuple(boat))
+            boat_coords=list(set(boat_coords))
+                    
+        else:
+            for i in range(3):
+                coords=[]
+                if val=="T" and row+i<10:
+                    coords=[(row+k,col, tb[i][k]) if tb[i][k].upper() != self.get_value(row+k, col) else (row+k,col,tb[i][k].upper()) for k in range(i+2)]
+                elif val=="B" and row-i>=0:
+                    coords=[(row-2+k,col, tb[i][k]) if tb[i][k].upper() != self.get_value(row-2+k, col) else (row-2+k,col,tb[i][k].upper()) for k in range(i+2) ]
+                elif val=="L" and col+i<10:
+                    coords=[(row,col+k, lr[i][k]) if lr[i][k].upper() != self.get_value(row, col+k) else (row,col+k,lr[i][k].upper()) for k in range(i+2)]
+                elif val=="R" and col-i>=0:
+                    coords=[(row,col-2+k, lr[i][k]) if lr[i][k].upper() != self.get_value(row, col-2+k) else (row,col-2+k,lr[i][k].upper()) for k in range(i+2)]
+                if coords!=[]:
+                    can_put=True
+                    for cor in coords:
+                        if self.rows[cor[0]]-self.boats_placed_row[cor[0]] >= 1:
+                            if not cor[2].isupper(): 
+                                for key,value in self.get_adjacent_values(
+                                    cor[0],cor[1]
+                                ).items():
+                                    if value[1] not in ["W",".",""]:
+                                        if (
+                                            key == "t"
+                                            and value[1] == "T"
+                                            and cor[2] == "b"
+                                        ):                                          
+                                            pass
+                                        elif (                                            
+                                            key == "b"
+                                            and value[1] == "B"
+                                            and cor[2] == "t"
+                                        ):                        
+                                            pass 
+                                        elif (
+                                            key == "t"
+                                            and value[1] == "T"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "b"
+                                            and value[1] == "B"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "b"
+                                            and value[1] == "M"
+                                            and cor[2] == "t"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "t"
+                                            and value[1] == "M"
+                                            and cor[2] == "b"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "t"
+                                            and value[1] == "M"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "b"
+                                            and value[1] == "M"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "l"
+                                            and value[1] == "L"
+                                            and cor[2] == "r"
+                                        ):                                          
+                                            pass
+                                        elif (                                            
+                                            key == "r"
+                                            and value[1] == "R"
+                                            and cor[2] == "l"
+                                        ):                        
+                                            pass
+                                        elif (
+                                            key == "l"
+                                            and value[1] == "L"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "r"
+                                            and value[1] == "R"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "r"
+                                            and value[1] == "M"
+                                            and cor[2] == "l"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "l"
+                                            and value[1] == "M"
+                                            and cor[2] == "r"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "l"
+                                            and value[1] == "M"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass
+                                        elif (
+                                            key == "r"
+                                            and value[1] == "M"
+                                            and cor[2] == "m"
+                                        ):
+                                            pass                       
+                                        else:
+                                            can_put=False
+                                            break
+                        else:
+                            can_put=False
+                            break
+                    if can_put:
+                        boat_coords.append(coords)
+        return boat_coords
     def decrease_hint_boats(self):
         """Deteta os barcos que já foram colocados e
         subtrai-os aos barcos disponíveis"""
@@ -670,6 +826,7 @@ class Board:
             > line = stdin.readline().split()
         """
         res = {}
+        res["hints"]=[]
         board= np.full([10, 10],"", dtype=str)
         for line in sys.stdin:
             split_line = line.split("\t")
@@ -680,6 +837,9 @@ class Board:
                 res["columns"] = [int(e) for e in split_line[1:]]
             elif split_line[0] == "HINT":
                 board[(int(split_line[1]), int(split_line[2]))] = split_line[-1]
+                res["hints"].append((int(split_line[1]), int(split_line[2])))
+            else:
+                res["n_hints"]=int(split_line[0])
         res["board"] = board
         return res
 
@@ -714,7 +874,12 @@ class Bimaru(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         actions = []
-
+        
+        if state.boardState.hints!=[]:
+            for hint in state.boardState.hints:
+                hint_boats=state.boardState.generate_hint_boats(hint[0], hint[1], hint[2])
+                for boat in hint_boats["boats"]:
+                    actions.append({"coords":boat})
         boat_length = 0
         for key in range(1, 5):
             if state.boardState.available_boats[key-1] != 0:
@@ -790,14 +955,18 @@ class Bimaru(Problem):
 
 if __name__ == "__main__":
     parsed = Board.parse_instance()
-    initial_board = Board(parsed["board"], parsed["rows"], parsed["columns"])
+    initial_board = Board(parsed["board"], parsed["rows"], parsed["columns"], parsed["hints"])
     initial_board.decrease_hint_boats()
     initial_board.set_initial_water()
     initial_board.find_boats_and_empty_spots()
+    print(initial_board.generate_hint_boats(0,0,"T"))
     #logger.info(initial_board.board)
-    problem=Bimaru(initial_board)
-    result = depth_first_tree_search(problem)
-    result.state.boardState.print()
+    #problem=Bimaru(initial_board)
+    #result = depth_first_tree_search(problem)
+    #result.state.boardState.print()
+    #Começar por meter todos as opções para hints e só depois começar a colocar por ordem decrescente de tamanho. Ideia: Meter o hint boats
+    #  a dar as coordenadas das hints que não estão completas e gerar todas as posições das hints noutra função que não o available_boats
+    #Ver a cena do copy, tentar somar uma matriz em vez de fazer copy é capaz de ser dispendioso
 
 
     # Usar uma técnica de procura para resolver a instância,

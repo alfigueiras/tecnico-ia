@@ -566,20 +566,20 @@ class Board:
         um barco de tamanho pretendido"""
         return [self.available_boats[i] if i!=boat_length-1 else self.available_boats[i]-1 for i in range(4)]
 
-    def generate_hint_boats(self,row, col, val, isM=False):
+    def generate_hint_boats(self,row, col, val, isM=False, max_length=4):
         boat_coords=[]
         tb=[["t","b"],["t","m","b"],["t","m","m","b"]]
         lr=[["l","r"],["l","m","r"],["l","m","m","r"]]
         if val=="M":
             res=[]
             if row-1>=0:
-                res+=self.generate_hint_boats(row-1,col,"T")
+                res+=self.generate_hint_boats(row-1,col,"T", max_length)
             if row+1<10:
-                res+=self.generate_hint_boats(row+1,col,"B")
+                res+=self.generate_hint_boats(row+1,col,"B",max_length)
             if col-1>=0:
-                res+=self.generate_hint_boats(row,col-1,"L")
+                res+=self.generate_hint_boats(row,col-1,"L",max_length)
             if col+1<10:
-                res+=self.generate_hint_boats(row,col+1,"R")
+                res+=self.generate_hint_boats(row,col+1,"R", max_length)
             res=[e for e in res if len(e)>2]
             for boat in res:
                 can_put=True
@@ -594,7 +594,7 @@ class Board:
             boat_coords=list(set(boat_coords))
                     
         else:
-            for i in range(3):
+            for i in range(max_length-1):
                 coords=[]
                 if val=="T" and row+i<10:
                     coords=[(row+k,col, tb[i][k]) if tb[i][k].upper() != self.get_value(row+k, col) else (row+k,col,tb[i][k].upper()) for k in range(i+2)]

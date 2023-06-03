@@ -181,8 +181,6 @@ class Board:
 
     def set_boat(self, boat_coords):
         """Set water around placed boat."""
-        # Tentar mudar isto em vez de fazer np.copy só somar os valores à self.board, começar com uma board vazia,
-        # meter as posições que vão mudar
         new_board = np.copy(self.board)
 
         # SETTING BOAT
@@ -236,9 +234,6 @@ class Board:
         return [self.available_boats[i] if i != boat_length - 1 else self.available_boats[i] - 1 for i in range(4)]
 
     def generate_hint_boats(self, row, col, val, max_length=4):
-
-        #Ele está a meter 4 peças de barcos em colunas que só cabem barcos de 3, ou seja começa por meter logo os barcos de maior tamanho mal e demora muito
-        #tempo a voltar a trás, resolver isto
         boat_coords = []
         tb = [["t", "b"], ["t", "m", "b"], ["t", "m", "m", "b"]]
         lr = [["l", "r"], ["l", "m", "r"], ["l", "m", "m", "r"]]
@@ -493,6 +488,64 @@ class Board:
             res = (self.board[(row, col - 1)], self.board[(row, col + 1)])
 
         return res
+    
+    #Posições ocupadas ao meter um barco
+    def n_spaces_to_fill(self, action):
+        n=0
+        n+=action["boat_length"]
+        tested_pos=[]
+
+        if action["coords"][0][0] == action["coords"][1][0]:
+            if self.rows[action["coords"][0][0]]-self.boats_placed_row[action["coords"][0][0]]-action["boat_length"]==0:
+                for col, val in np.ndenumerate(self.board[action["coords"][0][0]]):
+                    tested_pos.append((action["coords"][0][0],col[0]))
+                    if val=="":
+                        n+=1
+        elif action["coords"][0][1] == action["coords"][1][1]:
+            if self.rows[action["coords"][0][1]]-self.boats_placed_row[action["coords"][0][1]]-action["boat_length"]==0:
+                for row, val in np.ndenumerate(self.board[:,action["coords"][0][1]]):
+                    tested_pos.append((row,action["coords"][0][1]))
+                    if val=="":
+                        n+=1
+                    
+        for coord in action["coords"]:
+            adj_values=self.get_adjacent_values(coord[0], coord[1])
+            for val in adj_values.values():
+                if val[0] not in tested_pos and val[0] not in action["coords"]:
+                    tested_pos.append(val[0])
+                    if val[1]=="":
+                        n+=1
+        return n
+    
+    #Posições ocupadas na linha/coluna (incompleto)
+    def n_spaces_to_fill_lc(self, action):
+        n=0
+        n+=len(action["coords"])
+        tested_pos=[]
+
+        #Horizontal
+        if action["coords"][0][0] == action["coords"][1][0]:
+            for coord in action["coords"]:
+                adj_val=self.adjacent_horizontal_values(coord[0], coord[1])
+                if adj_val[0]=="":
+                    n+=1
+                    tested_pos.append((coord[0],coord[1]-1))
+                if adj_val[1]=="":
+                    n+=1
+                    tested_pos.append((coord[0], coord[1]+1))
+
+        #Vertical
+        if action["coords"][0][1] == action["coords"][1][1]:
+            for coord in action["coords"]:
+                adj_val=self.adjacent_vertical_values(coord[0], coord[1])
+                if adj_val[0]=="":
+                    n+=1
+                    tested_pos.append((coord[0]-1,coord[1]))
+                if adj_val[1]=="":
+                    n+=1
+                    tested_pos.append((coord[0]+1, coord[1]))
+        return n
+
 
     def print(self):
         """Dá print na board final"""
@@ -522,7 +575,7 @@ class Board:
             > line = stdin.readline().split()
         """
         res = {}
-        res["hints"]: List[Tuple[int, int, str]] = []
+        res["hints"] = []
         board = np.full([10, 10], "", dtype=str)
         for line in sys.stdin:
             split_line = line.split("\t")
@@ -552,27 +605,16 @@ class BimaruState:
     def __lt__(self, other):
         return self.id < other.id
 
-    # TODO: outros metodos da classe
-
-
 class Bimaru(Problem):
     def __init__(self, boardS: Board):
         """O construtor especifica o estado inicial."""
-        # possivelmente pode dar problemas porque ocupa muito espaço, se der reduzir o que se passa no estado inicial
-        # para apenas a board maybe
         self.initial = BimaruState(boardS)
 
-    # Decidir se se mete as águas com os barcos ou só os barcos e depois as águas nas ações
     def actions(self, state: BimaruState):
-        # talvez gerar também todos os estados possíveis que se podem ligar às hints existentes em vez de tamanho fixo
-        # Gerar barcos dependendo da profundidade
-        # Começar por fazer pesquisa cega
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         actions = []
 
-        #Se só houver barcos de 1 completar as linhas ou colunas 
-        #ver exemplo 9 está a dar merda com a hint de R e a criar barcos que não são possíveis
         if state.boardState.hints:
             for hint in state.boardState.hints:
                 boat_is="m"
@@ -596,21 +638,20 @@ class Bimaru(Problem):
                     boat_length = key
 
             for i in range(10):
-                # Possivelmente vão ser valores a mais devido ao hint_row, mas penso que seja a melhor opção sem
-                # aumentar demasiado o custo do código Pensar em maneira melhor de fazer este
-                # + state.boardState.boats_hint_row[i]
                 if state.boardState.rows[i] - state.boardState.boats_placed_row[i] >= boat_length:
                     boats = state.boardState.horizontal_boats(i, boat_length)
                     for boat in boats:
                         actions.append({"coords": boat, "boat_length": boat_length, "hint": None})
 
             for j in range(10):
-                #
-                #Isto tá mal, tenho de ver na verdade se existem 3 espaços seguidos
                 if state.boardState.columns[j] - state.boardState.boats_placed_col[j] >= boat_length:
                     boats = state.boardState.vertical_boats(j, boat_length)
                     for boat in boats:
                         actions.append({"coords": boat, "boat_length": boat_length, "hint": None})
+
+        if state.boardState.hints==[]:
+            if boat_length>2:
+                actions.sort(reverse=True, key=state.boardState.n_spaces_to_fill)
         return actions
 
     def result(self, state: BimaruState, action):
@@ -618,9 +659,6 @@ class Bimaru(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        # perguntar porque é que o python não considera como objetos diferentes e faz referências quando eu faço a
-        # new_board com os mesmos valores interiores
-        #
         if action["hint"]:
             new_hints = [h for h in state.boardState.hints if h != action["hint"]]
         else:
@@ -636,7 +674,6 @@ class Bimaru(Problem):
         return new_state
 
     def goal_test(self, state: BimaruState):
-        # Verificar as regras do goal_test
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas conforme as regras do problema."""
@@ -674,12 +711,9 @@ class Bimaru(Problem):
         return True
 
     def h(self, node: Node):
-        # Dar uma heurística melhor aos barcos maiores e também aos barcos que cumpram as condições das hints
         """Função heuristica utilizada para a procura A*."""
         # TODO
         pass
-
-    # TODO: outros metodos da classe
 
 
 if __name__ == "__main__":
@@ -691,13 +725,3 @@ if __name__ == "__main__":
     problem = Bimaru(initial_board)
     result = depth_first_tree_search(problem)
     result.state.boardState.print()
-
-    # Começar por meter todas as opções para hints e só depois começar a colocar por
-    # ordem decrescente de tamanho.
-    # Ideia: Meter o hint boats a dar as coordenadas das hints que não estão completas
-    # e gerar todas as posições das hints noutra função que não o available_boats Ver a cena do copy, tentar somar
-    # uma matriz em vez de fazer copy é capaz de ser dispendioso
-
-    # Usar uma técnica de procura para resolver a instância,
-    # Retirar a solução a partir do nó resultante,
-    # Imprimir para o ‘standard’ output no formato indicado.

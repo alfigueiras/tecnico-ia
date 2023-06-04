@@ -20,6 +20,7 @@ from search import (
 
 import numpy as np
 
+
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
@@ -45,8 +46,8 @@ class Board:
         self.boats_hint_row = np.zeros(10, dtype=int)
         self.boats_hint_col = np.zeros(10, dtype=int)
 
-    # Correr isto sempre depois do set_water?
     def find_boats_and_empty_spots(self):
+        """Conta o número de espaços vazios, os barcos colocados, e o número de hints por linha e coluna"""
         for (row, col), value in np.ndenumerate(self.board):
             if value == "":
                 self.empty_spots_row[row] += 1
@@ -59,6 +60,7 @@ class Board:
                     self.boats_hint_col[col] += 1
 
     def horizontal_boats(self, row, boat_length):
+        """Gera todas as posições possíveis para um barco horizontal de comprimento boat_length na linha escolhida"""
         board_row = self.board[row, :]
         j = 0
         char_lr = [["l", "r"], ["l", "m", "r"], ["l", "m", "m", "r"]]
@@ -73,7 +75,7 @@ class Board:
                     coords = [(row, col, "c")]
                 else:
                     if j >= boat_length:
-                        coords = [(row, col + k - boat_length, char_lr[boat_length - 2][k-1]) for k in
+                        coords = [(row, col + k - boat_length, char_lr[boat_length - 2][k - 1]) for k in
                                   range(1, boat_length + 1)]
                 can_put = True
                 if coords:
@@ -95,6 +97,7 @@ class Board:
         return boat_coords
 
     def vertical_boats(self, col, boat_length):
+        """Gera todas as posições possíveis para um barco vertical de comprimento boat_length na coluna escolhida"""
         board_col = self.board[:, col]
         j = 0
         char_tb = [["t", "b"], ["t", "m", "b"], ["t", "m", "m", "b"]]
@@ -109,7 +112,7 @@ class Board:
                     coords = [(row, col, "c")]
                 else:
                     if j >= boat_length:
-                        coords = [(row + k - boat_length, col, char_tb[boat_length - 2][k-1]) for k in
+                        coords = [(row + k - boat_length, col, char_tb[boat_length - 2][k - 1]) for k in
                                   range(1, boat_length + 1)]
                 can_put = True
                 if coords:
@@ -131,7 +134,7 @@ class Board:
         return boat_coords
 
     def set_initial_water(self):
-        """Sets water at the first instance of the board."""
+        """Coloca as águas conhecidas à partida no estado inicial."""
         # FILL ALL ROWS THAT ARE KNOWN WITH WATER
         for i, r in enumerate(self.rows):
             n_boats = sum(
@@ -180,7 +183,9 @@ class Board:
                             self.set_value(v[0][0], v[0][1], ".")
 
     def set_boat(self, boat_coords):
-        """Set water around placed boat."""
+        """Coloca o barco nas coordernadas dadas e todas as águas possíveis à volta do barco.
+        Se uma linha ou coluna ficar com o número total desejado de peças preenchidas, preenche toda essa linha e/ou coluna
+        de águas"""
         new_board = np.copy(self.board)
 
         # SETTING BOAT
@@ -234,6 +239,8 @@ class Board:
         return [self.available_boats[i] if i != boat_length - 1 else self.available_boats[i] - 1 for i in range(4)]
 
     def generate_hint_boats(self, row, col, val, max_length=4):
+        """Dadas as coordenadas de uma hint, gera todos os barcos possíveis que encaixam nessa hint
+        com comprimento máximo igual ao max_length"""
         boat_coords = []
         tb = [["t", "b"], ["t", "m", "b"], ["t", "m", "m", "b"]]
         lr = [["l", "r"], ["l", "m", "r"], ["l", "m", "m", "r"]]
@@ -262,30 +269,34 @@ class Board:
         else:
             for i in range(max_length - 1):
                 coords = []
-                if val == "T" and row + i+1 < 10:
+                if val == "T" and row + i + 1 < 10:
                     coords = [(row + k, col, tb[i][k]) if tb[i][k].upper() != self.get_value(row + k, col) else (
                         row + k, col, tb[i][k].upper()) for k in range(i + 2)]
 
-                elif val == "B" and row - i-1 >= 0:
+                elif val == "B" and row - i - 1 >= 0:
                     coords = [
-                        (row - i-1 + k, col, tb[i][k]) if tb[i][k].upper() != self.get_value(row - i-1 + k, col) else (
-                            row - i-1 + k, col, tb[i][k].upper()) for k in range(i + 2)]
-                elif val == "L" and col + i+1 < 10:
+                        (row - i - 1 + k, col, tb[i][k]) if tb[i][k].upper() != self.get_value(row - i - 1 + k,
+                                                                                               col) else (
+                            row - i - 1 + k, col, tb[i][k].upper()) for k in range(i + 2)]
+                elif val == "L" and col + i + 1 < 10:
                     coords = [(row, col + k, lr[i][k]) if lr[i][k].upper() != self.get_value(row, col + k) else (
                         row, col + k, lr[i][k].upper()) for k in range(i + 2)]
-                elif val == "R" and col-i-1 >= 0:
+                elif val == "R" and col - i - 1 >= 0:
                     coords = [
-                        (row, col - i-1 + k, lr[i][k]) if lr[i][k].upper() != self.get_value(row, col - i-1 + k) else (
-                            row, col - i-1 + k, lr[i][k].upper()) for k in range(i + 2)]
-                
-                if coords!=[] and (self.get_value(coords[-1][0],coords[-1][1])=="M" or self.get_value(coords[0][0],coords[0][1])=="M"):
-                    can_put=False
-                    coords=[]
+                        (row, col - i - 1 + k, lr[i][k]) if lr[i][k].upper() != self.get_value(row,
+                                                                                               col - i - 1 + k) else (
+                            row, col - i - 1 + k, lr[i][k].upper()) for k in range(i + 2)]
+
+                if coords != [] and (self.get_value(coords[-1][0], coords[-1][1]) == "M" or self.get_value(coords[0][0],
+                                                                                                           coords[0][
+                                                                                                               1]) == "M"):
+                    coords = []
                 if coords:
                     can_put = True
                     for cor in coords:
                         if not cor[2].isupper():
-                            if (self.rows[cor[0]] - self.boats_placed_row[cor[0]] >= 1) and (self.columns[cor[1]] - self.boats_placed_col[cor[1]] >= 1):
+                            if (self.rows[cor[0]] - self.boats_placed_row[cor[0]] >= 1) and (
+                                    self.columns[cor[1]] - self.boats_placed_col[cor[1]] >= 1):
                                 for key, value in self.get_adjacent_values(
                                         cor[0], cor[1]
                                 ).items():
@@ -399,7 +410,7 @@ class Board:
     def decrease_hint_boats(self):
         """Deteta os barcos que já foram colocados e
         subtrai-os aos barcos disponíveis"""
-        self.hints=[hint for hint in self.hints if hint[2] not in ["W", "C"]]
+        self.hints = [hint for hint in self.hints if hint[2] not in ["W", "C"]]
         tested_coords = []
         for (row, col), value in np.ndenumerate(self.board):
             if (row, col) not in tested_coords:
@@ -414,9 +425,9 @@ class Board:
                         if v_vals[1] == "" or v_vals[1] == "W":
                             stop = True
                         elif v_vals[1] == "B":
-                            coords=[(row + j, col) for j in range(0, k + 2)]
+                            coords = [(row + j, col) for j in range(0, k + 2)]
                             for coor in coords:
-                                self.hints.remove((coor[0],coor[1],self.get_value(coor[0],coor[1])))
+                                self.hints.remove((coor[0], coor[1], self.get_value(coor[0], coor[1])))
                             tested_coords.extend(
                                 coords
                             )
@@ -429,9 +440,9 @@ class Board:
                         if h_vals[1] == "" or h_vals[1] == "W":
                             stop = True
                         elif h_vals[1] == "R":
-                            coords=[(row, col + j) for j in range(1, k + 2)]
+                            coords = [(row, col + j) for j in range(1, k + 2)]
                             for coor in coords:
-                                self.hints.remove((coor[0],coor[1],self.get_value(coor[0],coor[1])))
+                                self.hints.remove((coor[0], coor[1], self.get_value(coor[0], coor[1])))
                             tested_coords.extend(
                                 [(row, col + j) for j in range(1, k + 2)]
                             )
@@ -440,12 +451,13 @@ class Board:
                         k += 1
 
     def set_value(self, row: int, col: int, value: str):
+        """Muda a board nas coordenadas dadas para value"""
         self.board[(row, col)] = value
 
     def get_adjacent_values(
             self, row: int, col: int
     ):
-        """Returns dictionary with all the adjacent coordinates plus their values."""
+        """Retorna um dicionário com todas as coordenadas adjacentes e os seus respetivos valores"""
         adjacent_coords = {
             "t": (row - 1, col),
             "b": (row + 1, col),
@@ -488,75 +500,48 @@ class Board:
             res = (self.board[(row, col - 1)], self.board[(row, col + 1)])
 
         return res
-    
-    #Posições ocupadas ao meter um barco
+
+    # Posições ocupadas ao meter um barco
     def n_spaces_to_fill(self, action):
-        n=0
-        n+=action["boat_length"]
-        tested_pos=[]
+        """Conta o número de espaços que vão ser preenchidos por águas e barcos numa certa ação"""
+        n = 0
+        n += action["boat_length"]
+        tested_pos = []
 
         if action["coords"][0][0] == action["coords"][1][0]:
-            if self.rows[action["coords"][0][0]]-self.boats_placed_row[action["coords"][0][0]]-action["boat_length"]==0:
+            if self.rows[action["coords"][0][0]] - self.boats_placed_row[action["coords"][0][0]] - action[
+                "boat_length"] == 0:
                 for col, val in np.ndenumerate(self.board[action["coords"][0][0]]):
-                    tested_pos.append((action["coords"][0][0],col[0]))
-                    if val=="":
-                        n+=1
+                    tested_pos.append((action["coords"][0][0], col[0]))
+                    if val == "":
+                        n += 1
         elif action["coords"][0][1] == action["coords"][1][1]:
-            if self.rows[action["coords"][0][1]]-self.boats_placed_row[action["coords"][0][1]]-action["boat_length"]==0:
-                for row, val in np.ndenumerate(self.board[:,action["coords"][0][1]]):
-                    tested_pos.append((row,action["coords"][0][1]))
-                    if val=="":
-                        n+=1
-                    
+            if self.rows[action["coords"][0][1]] - self.boats_placed_row[action["coords"][0][1]] - action[
+                "boat_length"] == 0:
+                for row, val in np.ndenumerate(self.board[:, action["coords"][0][1]]):
+                    tested_pos.append((row, action["coords"][0][1]))
+                    if val == "":
+                        n += 1
+
         for coord in action["coords"]:
-            adj_values=self.get_adjacent_values(coord[0], coord[1])
+            adj_values = self.get_adjacent_values(coord[0], coord[1])
             for val in adj_values.values():
                 if val[0] not in tested_pos and val[0] not in action["coords"]:
                     tested_pos.append(val[0])
-                    if val[1]=="":
-                        n+=1
+                    if val[1] == "":
+                        n += 1
         return n
-    
-    #Posições ocupadas na linha/coluna (incompleto)
-    def n_spaces_to_fill_lc(self, action):
-        n=0
-        n+=len(action["coords"])
-        tested_pos=[]
-
-        #Horizontal
-        if action["coords"][0][0] == action["coords"][1][0]:
-            for coord in action["coords"]:
-                adj_val=self.adjacent_horizontal_values(coord[0], coord[1])
-                if adj_val[0]=="":
-                    n+=1
-                    tested_pos.append((coord[0],coord[1]-1))
-                if adj_val[1]=="":
-                    n+=1
-                    tested_pos.append((coord[0], coord[1]+1))
-
-        #Vertical
-        if action["coords"][0][1] == action["coords"][1][1]:
-            for coord in action["coords"]:
-                adj_val=self.adjacent_vertical_values(coord[0], coord[1])
-                if adj_val[0]=="":
-                    n+=1
-                    tested_pos.append((coord[0]-1,coord[1]))
-                if adj_val[1]=="":
-                    n+=1
-                    tested_pos.append((coord[0]+1, coord[1]))
-        return n
-
 
     def print(self):
         """Dá print na board final"""
         res = ""
         for row in self.board:
-            new_row=[""]*10
+            new_row = [""] * 10
             for i in range(10):
-                if row[i]=="":
-                    new_row[i]="v"
+                if row[i] == "":
+                    new_row[i] = "v"
                 else:
-                    new_row[i]=row[i]
+                    new_row[i] = row[i]
             if res == "":
                 res += "".join(new_row)
             else:
@@ -605,6 +590,7 @@ class BimaruState:
     def __lt__(self, other):
         return self.id < other.id
 
+
 class Bimaru(Problem):
     def __init__(self, boardS: Board):
         """O construtor especifica o estado inicial."""
@@ -617,21 +603,25 @@ class Bimaru(Problem):
 
         if state.boardState.hints:
             for hint in state.boardState.hints:
-                boat_is="m"
-                if hint in ["T","B"]: boat_is="v"
-                elif hint in ["L","R"]: boat_is="h"
+                boat_is = "m"
+                if hint in ["T", "B"]:
+                    boat_is = "v"
+                elif hint in ["L", "R"]:
+                    boat_is = "h"
                 hint_boats = state.boardState.generate_hint_boats(hint[0], hint[1], hint[2])
                 for boat in hint_boats:
-                    if boat_is=="v" and state.boardState.columns[boat[0][1]] - state.boardState.boats_placed_col[boat[0][1]]>=len(boat)-1:
+                    if boat_is == "v" and state.boardState.columns[boat[0][1]] - state.boardState.boats_placed_col[boat[0][1]] >= len(boat) - 1:
                         actions.append({"coords": boat, "boat_length": len(boat), "hint": hint})
-                    elif boat_is=="h" and state.boardState.rows[boat[0][0]] - state.boardState.boats_placed_row[boat[0][0]]>=len(boat)-1:
+                    elif boat_is == "h" and state.boardState.rows[boat[0][0]] - state.boardState.boats_placed_row[boat[0][0]] >= len(boat) - 1:
                         actions.append({"coords": boat, "boat_length": len(boat), "hint": hint})
-                    elif boat_is=="m":
-                        if boat[0][0]==boat[1][0] and state.boardState.rows[boat[0][0]] - state.boardState.boats_placed_row[boat[0][0]]>=len(boat)-1:
+                    elif boat_is == "m":
+                        if boat[0][0] == boat[1][0] and state.boardState.rows[boat[0][0]] - \
+                                state.boardState.boats_placed_row[boat[0][0]] >= len(boat) - 1:
                             actions.append({"coords": boat, "boat_length": len(boat), "hint": hint})
-                        elif boat[0][1]==boat[1][1] and state.boardState.columns[boat[0][1]] - state.boardState.boats_placed_col[boat[0][1]]>=len(boat)-1:
+                        elif boat[0][1] == boat[1][1] and state.boardState.columns[boat[0][1]] - \
+                                state.boardState.boats_placed_col[boat[0][1]] >= len(boat) - 1:
                             actions.append({"coords": boat, "boat_length": len(boat), "hint": hint})
-        else:   
+        else:
             boat_length = 0
             for key in range(1, 5):
                 if state.boardState.available_boats[key - 1] != 0:
@@ -649,8 +639,8 @@ class Bimaru(Problem):
                     for boat in boats:
                         actions.append({"coords": boat, "boat_length": boat_length, "hint": None})
 
-        if state.boardState.hints==[]:
-            if boat_length>2:
+        if state.boardState.hints == []:
+            if boat_length > 2:
                 actions.sort(reverse=True, key=state.boardState.n_spaces_to_fill)
         return actions
 
@@ -671,6 +661,7 @@ class Bimaru(Problem):
         new_state = BimaruState(new_board)
 
         new_state.boardState.find_boats_and_empty_spots()
+
         return new_state
 
     def goal_test(self, state: BimaruState):
@@ -681,12 +672,13 @@ class Bimaru(Problem):
         curr_board = state.boardState.board
         rows = state.boardState.rows
         cols = state.boardState.columns
-        
-        #if state.boardState.available_boats[1]==1:
-           #print(state.boardState.rows, state.boardState.columns)
-           #print(state.boardState.available_boats)
-            #state.boardState.print()
-            #print("----------------------------")
+
+        # if state.boardState.available_boats[1]==1:
+        # print(state.boardState.rows, state.boardState.columns)
+        # print(state.boardState.available_boats)
+        # state.boardState.print()
+        # print("----------------------------")
+
         for r_i in range(len(rows)):
             n_boats = sum(
                 [1 for e in curr_board[r_i, :] if e != "" and e != "." and e != "W"]
@@ -703,7 +695,6 @@ class Bimaru(Problem):
 
         if state.boardState.available_boats != [0, 0, 0, 0]:
             return False
-
 
         for (r, c), value in np.ndenumerate(curr_board):
             if curr_board[r, c] == "":

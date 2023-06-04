@@ -533,7 +533,7 @@ class Board:
         return n
 
     def print(self):
-        """Dá print na board final"""
+        """Dá print na board final."""
         res = ""
         for row in self.board:
             new_row = [""] * 10
